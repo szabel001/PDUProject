@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power Distribution Unit</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background-color: #f7f9fb; margin: 0; padding: 0; color: #222; }
+  header { background-color: #0078d7; color: white; padding: 20px; text-align: center; font-size: 1.8em; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+  main { padding: 20px; max-width: 1000px; margin: auto; }
+  section { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  h2 { color: #0078d7; border-bottom: 2px solid #0078d7; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { text-align: center; padding: 10px; border-bottom: 1px solid #e0e0e0; }
+  tr:hover { background-color: #f0f7ff; }
+  .relay-btn { background-color: #e0e0e0; border: none; border-radius: 20px; padding: 8px 20px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+  .relay-on { background-color: #00a651; color: white; }
+  .relay-off { background-color: #d9534f; color: white; }
+  .relay-btn:hover { opacity: 0.8; }
+</style>
+</head>
+<body>
+<header>Power Distribution Unit</header>
+<main>
+  <section id="consumption">
+    <h2>Consumption Data</h2>
+    <table id="table-consumption">
+      <tr><th>Voltage (V)</th><th>Current (A)</th><th>Power (W)</th></tr>
+      <tr><td id="voltage">--</td><td id="current">--</td><td id="power">--</td></tr>
+    </table>
+  </section>
+
+  <section id="relays">
+    <h2>Relay States</h2>
+    <div id="relay-container" style="display:flex;justify-content:space-around;flex-wrap:wrap;"></div>
+  </section>
+
+  <section id="info">
+    <h2>IEC Module Info</h2>
+    <table id="info-table">
+      <tr><th>MODBUS_ID</th><th>ID</th><th>VERSION</th><th>AVAILABLE_LEDS</th><th>CURRENT_LIMIT</th><th>RELAY_COUNT</th><th>IS_CURRENT_MEASURED</th><th>IS_VOLTAGE_MEASURED</th></tr>
+      <tr id="info-row"></tr>
+    </table>
+  </section>
+</main>
+
+<script>
+async function loadData() {
+  const res = await fetch('/api/data');
+  const data = await res.json();
+
+  document.getElementById('voltage').textContent = data.voltage.toFixed(1);
+  document.getElementById('current').textContent = data.current.toFixed(2);
+  document.getElementById('power').textContent = data.power.toFixed(1);
+
+  const container = document.getElementById('relay-container');
+  container.innerHTML = '';
+  data.relays.forEach((state, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'relay-btn ' + (state ? 'relay-on' : 'relay-off');
+    btn.textContent = state ? 'ON' : 'OFF';
+    btn.onclick = async () => {
+      await fetch('/api/relay/' + i + '/toggle');
+      loadData();
+    };
+    container.appendChild(btn);
+  });
+
+  const row = document.getElementById('info-row');
+  row.innerHTML = `
+    <td>${data.modbus_id}</td>
+    <td>${data.id}</td>
+    <td>${data.version}</td>
+    <td>${data.available_leds}</td>
+    <td>${data.current_limit}</td>
+    <td>${data.relay_count}</td>
+    <td>${data.is_current_measured ? 'Yes' : 'No'}</td>
+    <td>${data.is_voltage_measured ? 'Yes' : 'No'}</td>
+  `;
+}
+
+setInterval(loadData, 2000);
+loadData();
+</script>
+</body>
+</html>

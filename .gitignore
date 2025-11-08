@@ -1,0 +1,95 @@
+# ============================================================
+# STM32 + PlatformIO combined .gitignore
+# ============================================================
+
+# ===== STM32 build and temporary files =====
+*.o
+*.d
+*.map
+*.lst
+*.elf
+*.bin
+*.hex
+*.axf
+
+# STM32CubeIDE / Eclipse workspace files
+.metadata/
+*.launch
+*.log
+*.bak
+*.tmp
+
+# Build directories
+/Debug/
+/Release/
+/build/
+/out/
+/obj/
+
+
+# CubeMX-generated temporary files
+*.ioc-backup
+*.ioc-save
+*.ioc-temp
+*.ioc~
+*.ioc.bak
+
+# CubeIDE project settings (optional)
+.settings/
+*.code-workspace
+
+# ===== PlatformIO-specific files =====
+# Build output folders
+.pio/
+.pioenvs/
+.piolibdeps/
+.pio/build/
+.pio/libdeps/
+
+# PlatformIO configuration backups
+platformio.ini.tmp
+platformio.ini.bak
+
+# VSCode settings created by PlatformIO
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch/
+.vscode/.browse.VC.db
+
+# ===== General OS / Editor / Temporary files =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE/editor cache and temp files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.user
+*.db
+*.orig
+*.bak
+*.tmp
+*.log
+
+# Python cache (for build or helper scripts)
+__pycache__/
+*.pyc
+
+# ===== Git merge conflict backups =====
+*.orig
+
+# ============================================================
+# Files that SHOULD be tracked
+# ============================================================
+# Keep:
+#  - Source files (Core/, Src/, Inc/, Drivers/)
+#  - STM32 .ioc file
+#  - platformio.ini
+#  - Documentation (README.md, etc.)
+# ============================================================
+
+src/MainModule/lib/
+src/MainModule/.vscode/

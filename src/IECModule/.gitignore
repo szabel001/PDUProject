@@ -1,0 +1,31 @@
+# STM32Cube generated build folders
+/Debug/
+/Release/
+
+# IDE specific
+/.settings/
+/*.launch
+*.log
+*.bin
+*.elf
+*.hex
+*.map
+
+# Backup/temporary files
+*~
+*.swp
+*.bak
+
+# Object files
+*.o
+*.d
+
+# CubeIDE index files
+/.cproject
+/.project
+
+# STM32CubeMX project metadata
+*.mxproject
+
+# Other IDEs
+/.vscode/
