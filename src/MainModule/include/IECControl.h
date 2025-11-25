@@ -86,7 +86,8 @@ private:
     void _readIECCurrentLimit(uint8_t id);
     void _readIECMeasureVoltageCount(uint8_t id);
     void _readIECMeasureCurrentCount(uint8_t id);
-    void _readIECStatus(uint8_t id);              // IEC's status is Error/Off/Standby/Active TODO implement
+    void _readIECAvailableLEDs(uint8_t id);
+    void _readIECStatus(uint8_t id); // IEC's status is Error/Off/Standby/Active TODO implement
 
     void _readCustCurrWarningLimit(uint8_t id);
     void _readCustCurrErrorLimit(uint8_t id);

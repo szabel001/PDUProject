@@ -1,70 +1,111 @@
 #ifndef TFTDisplay_h
 #define TFTDisplay_h
 
-#include "TFT_eSPI.h"
-#include <pinouts.h>
+#include <TFT_eSPI.h>
 #include <IECControl.h>
 
-class TFTDisplay : public TFT_eSPI {
-  public:
-    TFTDisplay();
-    uint8_t rotation = 0;
-    uint8_t textSize = 0;
+enum menuState {
+  SETTINGS,
+  IEC,
+  PDU_STATUS,
+  AHT10,
 
-    void setupDisplay(IECControl& iec);
-    void runDisplay(String str);  // Display the given string on the screen for testing until full implementation is done
-    void drawScreen_welcome();
-    void drawScreen_menu();
+  IEC_INFO,
+  IEC_STATUS,
+  IEC_SETTINGS,
+};
+
+struct MenuItem {
+  const char* name;
+  menuState nextMenu;
+  String value;
+};
+
+struct Menu {
+  const char* title;
+  MenuItem* items;
+  uint8_t itemCount;
+  Menu* parent;
+};
+
+class TFTDisplay {
+public:
+  TFTDisplay();
+
+  void setupDisplay(IECControl& iec);
+  void setupMenu();
+  void processButtonDebounce();
+  void updateIECDetailMenus(int id);
+  void drawRelayIcon(bool state, int x, int y, uint16_t bg);
+  void updateActiveMenuPeriodic();
+  void updateDynamicValues();
+  void drawMenuWindow(); // görgetett menü ablak
+  void updateMenuValues();
+  void updateCursor(); // kurzor mozgatás
 
   private:
-    void rollScreen();
-    //TODO need to be refined after frontend integration
-    void drawScreen_settings();
-    void drawScreen_subSetting();
-    void drawScreen_IECStatus();
-    void drawScreen_PDUStatus();
-    void drawScreen_AHT10();
+  MenuItem mainItems[10];      // bővíthető
+  MenuItem settingsItems[5];
 
-    TFT_eSPI _tft;
-    IECControl* _iec;
+  Menu mainMenu;
+  Menu settingsMenu;
 
-    // singleton pointer, hogy a C-style ISR-ek elérjék az aktuális példányt
-    static TFTDisplay* _instance;
+  MenuItem iecItems[10];
+  Menu iecMenu;
 
-    // statikus ISR-wrapper-ek (attachInterrupt-hez)
-    static void IRAM_ATTR isr_handleUp();
-    static void IRAM_ATTR isr_handleDown();
-    static void IRAM_ATTR isr_handleBack();
-    static void IRAM_ATTR isr_handleConfirm();
+  MenuItem iecModulesItems[20];   // max 20 modul
+  Menu iecModulesMenu;
 
-    // debouncing-et a fő ciklusban végezd el
-    void processButtonDebounce();
+  Menu iecInfoDetailMenu;
+  MenuItem iecInfoDetailItems[10];
+
+  Menu iecStatusDetailMenu;
+  MenuItem iecStatusDetailItems[10];
+
+  Menu iecSettingDetailMenu;
+  MenuItem iecSettingDetailItems[10];
 
 
-        // gombokhoz: ISR által állított raw flag-ek (minimális ISR munka)
-    volatile bool rawUpPressed = false;
-    volatile bool rawDownPressed = false;
-    volatile bool rawBackPressed = false;
-    volatile bool rawConfirmPressed = false;
 
-    // debounced állapotok (fő ciklus használja)
-    volatile bool upPressed = false;
-    volatile bool downPressed = false;
-    volatile bool backPressed = false;
-    volatile bool confirmPressed = false;
+  Menu* currentMenu;
+  volatile int currentSelection = 0;
+  int lastSelection = -1;
+  int selectedIECModuleID = -1;
 
-    // last press times (ms) — privát, a debouncinghez
-    volatile unsigned long lastUpTime = 0;
-    volatile unsigned long lastDownTime = 0;
-    volatile unsigned long lastBackTime = 0;
-    volatile unsigned long lastConfirmTime = 0;
+  unsigned long lastAutoUpdate = 0;
+  const unsigned long autoUpdateInterval = 1000; // ms
 
-    // menü/állapot mezők
-    int currentMenu = 0;
-    int selectedOutlet = 10;
-    bool relayState = false;
 
-    unsigned long startMillis = 0;
-    unsigned long currentMillis;
-  };
+  TFT_eSPI _tft;
+  IECControl* _iec;
+
+  int windowStart = 0;         // első látható menüpont a windowban
+  const int maxVisible = 4;    // maximum menüpont a kijelzőn egyszerre
+  const int rowHeight = 20;
+  uint8_t startOfTexts = 35;
+  uint8_t startOfTextsLeft = 5;
+  uint8_t startOfTextsFromBlue = 3;
+
+  static TFTDisplay* _instance;
+
+  static void IRAM_ATTR isr_handleUp();
+  static void IRAM_ATTR isr_handleDown();
+  static void IRAM_ATTR isr_handleBack();
+  static void IRAM_ATTR isr_handleConfirm();
+  bool interruptTimer();
+
+  volatile unsigned long lastButtonPressed = 0;
+
+  volatile bool rawUpPressed = false;
+  volatile bool rawDownPressed = false;
+  volatile bool rawBackPressed = false;
+  volatile bool rawConfirmPressed = false;
+  volatile bool rawAnyButton = false;
+
+  volatile unsigned long lastUpTime = 0;
+  volatile unsigned long lastDownTime = 0;
+  volatile unsigned long lastBackTime = 0;
+  volatile unsigned long lastConfirmTime = 0;
+};
+
 #endif

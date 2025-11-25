@@ -64,6 +64,7 @@ void IECControl::collectIECModuleInfos() {
 
 bool IECControl::setRelayStatus(uint8_t id, bool status) {
   ModbusRTUMasterError _error = _mbMaster.writeSingleCoil(id, 0, status);
+  _readRelayStatus(id);
   #ifdef DEBUG
     _debugString = "ID: " + String(id) + " " + errorStrings[_error] + " with a value of: " + String(status);
     Serial.println(_debugString);
@@ -179,7 +180,10 @@ uint16_t IECControl::getIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id)
     return _getIntDataFromInputRegister(id, IS_AC_FREQUENCY_MEASURED_START);
 }
 
-
+uint16_t IECControl::getIEC_AVAILABLE_LEDS(uint8_t id)
+{
+    return _getIntDataFromInputRegister(id, AVAILABLE_LEDS_START);
+}
 
 
 uint16_t IECControl::getIECRelayStatus(uint8_t id)
@@ -242,6 +246,13 @@ void floatToIEEE754Registers(float value, uint16_t* regs) {
     std::memcpy(&raw, &value, sizeof(uint32_t));
     regs[0] = static_cast<uint16_t>((raw >> 16) & 0xFFFF);  // High
     regs[1] = static_cast<uint16_t>(raw & 0xFFFF);          // Low
+}
+
+float IEEE754RegistersToFloat(const uint16_t* regs) {
+    uint32_t raw = (static_cast<uint32_t>(regs[0]) << 16) | static_cast<uint32_t>(regs[1]);
+    float value;
+    std::memcpy(&value, &raw, sizeof(float));
+    return value;
 }
 
 uint16_t IECControl::_getIntDataFromInputRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
@@ -309,6 +320,7 @@ void IECControl::_readIECCapabilities(uint8_t id) {
   _readIECCurrentLimit(id);
   _readIECMeasureVoltageCount(id);
   _readIECMeasureCurrentCount(id);
+  _readIECAvailableLEDs(id);
 }
 
 void IECControl::_readIECStatus(uint8_t id) { //TODO shall be implemented in the future as real status reading, return an IECStatus enum
@@ -325,8 +337,8 @@ void IECControl::_readRelayStatus(uint8_t id) {
         _debugString = "ID: " + String(id) + " " + errorStrings[_error];
         Serial.println(_debugString);
 #endif
-        _iecModules[id].inputRegisters[RELAY_STATE_START] = buffer[0];
     }
+    else _iecModules[id].inputRegisters[RELAY_STATE_START] = buffer[0];
 }
 
 void IECControl::_readCurrentData(uint8_t id) {
@@ -402,6 +414,10 @@ void IECControl::_readIECMeasureVoltageCount(uint8_t id) { //Read the relay stat
 
 void IECControl::_readIECMeasureCurrentCount(uint8_t id) { //Read the relay status from the given slave ID over
   _readIECUINT16InputRegister(id, IS_CURRENT_MEASURED_START);
+}
+
+void IECControl::_readIECAvailableLEDs(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECUINT16InputRegister(id, AVAILABLE_LEDS_START);
 }
 
 void IECControl::_readCustCurrWarningLimit(uint8_t id) { //Read the relay status from the given slave ID over

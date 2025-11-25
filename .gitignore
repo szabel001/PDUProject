@@ -36,7 +36,6 @@
 
 # CubeIDE project settings (optional)
 .settings/
-*.code-workspace
 
 # ===== PlatformIO-specific files =====
 # Build output folders

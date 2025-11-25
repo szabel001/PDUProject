@@ -3,26 +3,27 @@
 
 #include <networkLayerManager.h>
 #include <SPIFFS.h>
+
+#include <AsyncWebSocket.h>
 #include <IECControl.h>
 
-// Webserver osztály — több IEC modul támogatásával
 class PDU_webserver {
-  public:
-    // Konstruktor: átadod a webszerver példányt, az IECControl referenciát és a modul ID-k listáját
-    PDU_webserver(AsyncWebServer *server, IECControl *iec);
+public:
+    PDU_webserver(AsyncWebServer *server, IECControl *iecControl);
 
-    // Indítja a webservert és beállítja a route-okat
     void runServer();
+    void broadcastModules();          // WS frissítés
+    void setUpdateInterval(uint32_t ms); // IEC frissítési ciklus
 
-  private:
+private:
     AsyncWebServer *webServer;
     IECControl *iec;
+    AsyncWebSocket ws;
 
-    // Segédfüggvény: ellenőrzi, hogy a moduleIds listában szerepel-e a megadott mod ID
     bool hasModuleId(uint8_t id);
-    void setRelayStatusWeb(uint8_t id, bool status);
-    bool currentRelayStatus = false;
-    bool toggleStatus = false;
+    void setRelayStatusWeb(uint8_t id, uint8_t relay, bool status);
+
+    uint32_t updateInterval = 1000; // ms, alapértelmezett 1s
 };
 
-#endif // PDU_webserver_h
+#endif
