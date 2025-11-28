@@ -133,3 +133,4 @@ USART1.VirtualMode-Hardware\ Flow\ Control\ (RS485)=VM_ASYNC
 VP_SYS_VS_Systick.Mode=SysTick
 VP_SYS_VS_Systick.Signal=SYS_VS_Systick
 board=custom
+isbadioc=false

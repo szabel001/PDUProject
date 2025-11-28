@@ -83,6 +83,16 @@ void networkLayerManager::setupWifi(wifiMode mode) {
   }
 }
 
+void networkLayerManager::configureWifiSSID(String ssid) {
+  _actWifiSTA_SSID = ssid;
+  setupWifi(wifiMode::STA);
+}
+
+void networkLayerManager::configureWifiPassword(String password) {
+  _actWifiSTA_Password = password;
+  setupWifi(wifiMode::STA);
+}
+
 void networkLayerManager::configureWifiCredentials(String ssid, String password, wifiMode mode) {
   if (mode == wifiMode::STA) {
     _actWifiSTA_SSID = ssid;

@@ -46,6 +46,8 @@ MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 8K
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 64K
+/* Reserve last 256 bytes for config params */
+  CONFIG_PARAMS (r) : ORIGIN = 0x0800FC00, LENGTH = 0x100
 }
 
 /* Sections */
@@ -184,4 +186,11 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+  
+  /* CONFIG PARAMS SECTION ---------------------------------------- */
+	.config_params :
+	{
+	    KEEP(*(.config_params))
+	} > CONFIG_PARAMS
+ 
 }

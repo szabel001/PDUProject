@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "modbusSlave.h"
 #include "IECData.h"
+#include "config_params.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,9 +65,18 @@ static void MX_USART1_UART_Init(void);
 uint8_t RxData[256];
 uint8_t TxData[256];
 
+uint8_t MODBUS_ID = 1;
+
+uint8_t prevRelayState;
+uint8_t prevCustCurrWarningLimit;
+uint8_t prevCustCurrErrorLimit;
+
+float actualCurrent;
+
+
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-	if (RxData[0] == SLAVE_ID)
+	if (RxData[0] == MODBUS_ID)
 	{
 		switch (RxData[1]){
 		case 0x03:
@@ -136,9 +146,27 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, RxData, 256);
-  HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(RED_LED_GPIO_Port, RED_LED_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(RELAY_CTRL_GPIO_Port, RELAY_CTRL_Pin, GPIO_PIN_SET);
+  prevRelayState = 0;
+  HAL_GPIO_WritePin(RELAY_CTRL_GPIO_Port, RELAY_CTRL_Pin, prevRelayState);
+  Coils_Database[RELAY_STATE_START] = prevRelayState;
+
+  Coils_Database[IS_VOLTAGE_MEASURED_START] = Config_Params->IS_CURRENT_MEASURED;
+  Coils_Database[IS_CURRENT_MEASURED_START] = Config_Params->IS_VOLTAGE_MEASURED;
+
+  Input_Registers_Database[ID_START] = Config_Params->ID;
+  Input_Registers_Database[VERSION_START] = Config_Params->VERSION;
+  Input_Registers_Database[AVAILABLE_LEDS_START] = Config_Params->AVAILABLE_LEDS;
+
+  Input_Registers_Database[CURRENT_LIMIT_START] = Config_Params->CURRENT_LIMIT;
+  Input_Registers_Database[CUSTCURR_WARNING_LIMIT_START] = Config_Params->CURRENT_LIMIT;
+  Input_Registers_Database[CUSTCURR_ERROR_LIMIT_START] = Config_Params->CURRENT_LIMIT;
+  prevCustCurrWarningLimit = Config_Params->CURRENT_LIMIT;
+  prevCustCurrErrorLimit = Config_Params->CURRENT_LIMIT;
+  float valami = Config_Params->CURRENT_LIMIT;
+  Input_Registers_Database[RELAY_COUNT_START] = Config_Params->RELAY_COUNT;
+  MODBUS_ID = Config_Params->MODBUS_ID;
 
   /* USER CODE END 2 */
 
@@ -147,10 +175,10 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	//readPowerData(&hadc1);
-	readVoltageData();
 	readCurrentData(&hadc1);
+	readVoltageData();
 	readPowerData(&hadc1);
+	prevRelayState = setRelayStatus(prevRelayState);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

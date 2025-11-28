@@ -22,7 +22,9 @@ class networkLayerManager {
   networkLayerManager(){}
   void initInternetProtocol();
   void setupWifi(wifiMode mode);
-  void configureWifiCredentials(String ssid, String password, wifiMode mode); //set default values
+  void configureWifiSSID(String ssid);
+  void configureWifiPassword(String password);
+  void configureWifiCredentials(String ssid, String password, wifiMode mode); // set default values
   void configureWifi(uint8_t ip[], uint8_t gateway[], uint8_t subnet[], wifiMode mode);
   void configureEthernet(uint8_t ip[], uint8_t gateway[], uint8_t subnet[]);
 

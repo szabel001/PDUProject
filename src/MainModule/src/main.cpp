@@ -32,14 +32,14 @@ void setup() {
 
   globalIEC->setpowerDataUpdateCycleTime(1000); // Set the power data update cycle time to 1 second (1000 ms)
 
-  tftDisplay.setupDisplay(*globalIEC); // Initialize the TFT display with the IEC control reference
+  tftDisplay.setupDisplay(*globalIEC, *networkLayer); // Initialize the TFT display with the IEC control reference
 }
 
 uint32_t lastUpdate = 0;
 
 void loop() {
   globalIEC->IECReadLoop(); // Read the IEC power data over modbus
-  tftDisplay.processButtonDebounce();
+  tftDisplay.processButton();
   tftDisplay.updateCursor();
   tftDisplay.updateActiveMenuPeriodic();
 

@@ -13,7 +13,7 @@
 #include "main.h"
 #include "IECData.h"
 
-#define SLAVE_ID 8
+#define SLAVE_ID 1
 
 #define ILLEGAL_FUNCTION       0x01
 #define ILLEGAL_DATA_ADDRESS   0x02
