@@ -28,6 +28,33 @@ int TFTDisplay::findMenuIndexById(int id) {
   return -1;
 }
 
+Menu *TFTDisplay::getMenuById(int id) {
+    for (size_t i = 0; i < menus.size(); i++) {
+    if (menus[i].id == id) return &menus[i];
+  }
+  return nullptr;
+}
+
+void TFTDisplay::drawBackButton(bool selected) {
+    _tft.fillRect(0, 90, 60, 20, TFT_BLACK);
+    if(selected)
+        _tft.setTextColor(TFT_YELLOW, TFT_BLUE);
+    else
+        _tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    _tft.drawString("BACK", 10, 90);
+}
+
+
+void TFTDisplay::drawSaveButton(bool selected) {
+    int charWidth = 7;
+    _tft.fillRect(_tft.width() - 10 - _tft.textWidth("SAVE"), 90, _tft.textWidth("SAVE"), 20, TFT_BLACK);
+        if(selected)
+        _tft.setTextColor(TFT_YELLOW, TFT_BLUE);
+    else
+        _tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    _tft.drawString("SAVE", _tft.width() - 10 - _tft.textWidth("SAVE"), 90);
+}
+
 void TFTDisplay::startEditing(const String& initialValue,
                               const String& allowedChars,
                               std::function<void(const String&)> saveCb)
@@ -42,34 +69,31 @@ void TFTDisplay::startEditing(const String& initialValue,
 
     drawEditorScreen();
 }
+
 void TFTDisplay::drawEditorScreen() {
     _tft.fillRect(0, 40, _tft.width(), 40, TFT_BLACK);
     _tft.setTextColor(TFT_WHITE, TFT_BLACK);
     String displayStr = editor.get();
-    int cursorPos = editor.getCursor();
+    _tft.drawString(displayStr, (_tft.width()/2) - (_tft.textWidth(displayStr)), 50);
+    _tft.setTextColor(TFT_WHITE, TFT_BLUE);
+    _tft.drawString(String(displayStr[editor.getCursor()]), (_tft.width()/2) - (_tft.textWidth(displayStr)) + _tft.textWidth(displayStr.substring(0, editor.getCursor())), 50);
 
-    _tft.drawString(displayStr, 10, 50);
-
-    // Draw cursor
-    int charWidth = 8; // assuming fixed width font
-    _tft.drawLine(10 + cursorPos * charWidth, 70, 10 + cursorPos * charWidth + charWidth - 1, 70, TFT_YELLOW);
+    drawBackButton(backSelected);
+    drawSaveButton(saveSelected);
 }
 
-// void TFTDisplay::drawEditorScreen() {
-//     _tft.fillRect(0, 40, 240, 60, TFT_BLACK);
-// 
-//     String text = editor.get();
-//     int cursor = editor.getCursor();
-// 
-//     // normal text
-//     _tft.setTextColor(TFT_WHITE, TFT_BLACK);
-//     _tft.drawString(text, 10, 60);
-// 
-//     // cursor underline
-//     int16_t x = 10 + cursor * 12;
-//     _tft.drawWideLine(x, 78, x + 10, 78, 2, TFT_GREEN);
-// }
+void TFTDisplay::drawDataViewScreen(const String &title, const std::vector<String> &dataLines) {
+    _tft.fillScreen(TFT_BLACK);
+    _tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    _tft.drawString(title, 10, 10);
 
+    _tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    for (size_t i = 0; i < dataLines.size(); i++) {
+        _tft.drawString(dataLines[i], 10, 40 + i * 20);
+    }
+
+    drawBackButton(true); // Back button always selected in view mode
+}
 
 // --- Setup menu (modular, dynamic) ---
 void TFTDisplay::setupMenu() {
@@ -101,10 +125,7 @@ void TFTDisplay::setupMenu() {
   addMenuItem(settingsId, MenuItem("PDU Modbus", MenuActionType::CALLBACK, -1, [this](){ /* open PDU Modbus settings later */ }));
   addMenuItem(settingsId, MenuItem("IEC Modbus", MenuActionType::CALLBACK, -1, [this](){ /* open IEC Modbus settings later */ }));
   addMenuItem(settingsId, MenuItem("Measuring", MenuActionType::CALLBACK, -1, [this](){ /* measuring settings */ }));
-  addMenuItem(settingsId, MenuItem("Security", MenuActionType::CALLBACK, -1, [this](){ /* security settings */ }));
-  addMenuItem(settingsId, MenuItem("OTA Update", MenuActionType::CALLBACK, -1, [this](){ /* OTA settings */ }));
   addMenuItem(settingsId, MenuItem("System", MenuActionType::CALLBACK, -1, [this](){ /* system */ }));
-  addMenuItem(settingsId, MenuItem("Logs", MenuActionType::CALLBACK, -1, [this](){ /* logs */ }));
 
   // --- PDU Status contents ---
   addMenuItem(pduStatusId, MenuItem("Voltage (V):", MenuActionType::NONE));
@@ -147,29 +168,23 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
   addMenuItem(settingsMenuId, MenuItem("Ethernet", MenuActionType::NAVIGATE, ethId));
 
   // Wifi items (editable later)
-  addMenuItem(wifiId, MenuItem("SSID:", MenuActionType::CALLBACK, -1,
+  addMenuItem(wifiId, MenuItem("View WiFi STA", MenuActionType::CALLBACK, -1,
       [this]() {
-          String current = "MySSID";   // töltsd be EEPROM-ból vagy configból
-          startEditing(current,
-                      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-",
-                      [this](const String& newValue){
-                          // MENTÉS
-                          _networkMgr->configureWifiSSID(newValue);
-                      });
+          String ssid = readStringFromNVS("ssid_sta", "");
+          String password = readStringFromNVS("pwd_sta", "");
+          drawDataViewScreen("WiFi STA SSID & Password", { "SSID: " + ssid, "Password: " + password });
       }));
 
-  addMenuItem(wifiId, MenuItem("Password:", MenuActionType::CALLBACK, -1, 
+  addMenuItem(wifiId, MenuItem("View WiFi AP", MenuActionType::CALLBACK, -1, 
           [this]() {
-          String current = "MyPassword";   // töltsd be EEPROM-ból vagy configból
-          startEditing(current,
-                      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-",
-                      [this](const String& newValue){
-                          // MENTÉS
-                          _networkMgr->configureWifiPassword(newValue);
-                      });
+          String ssid = readStringFromNVS("ssid_ap", "");
+          String password = readStringFromNVS("pwd_ap", "");
+          drawDataViewScreen("WiFi AP SSID & Password", { "SSID: " + ssid, "Password: " + password });
       }));
 
-  addMenuItem(wifiId, MenuItem("Mode (STA/AP):", MenuActionType::CALLBACK, -1, [this](){ /* toggle mode */ }));
+  addMenuItem(wifiId, MenuItem("Set WiFi AP status:", MenuActionType::CALLBACK, -1, [this](){ 
+    _networkMgr->setupAPWifi(!_networkMgr->getWiFiAPStatus());
+  }));getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAPStatus() ? "[ON]" : "[OFF]";
 
   // Ethernet items
   addMenuItem(ethId, MenuItem("DHCP:", MenuActionType::CALLBACK, -1, [this](){ /* toggle DHCP */ }));
@@ -181,9 +196,6 @@ void TFTDisplay::buildPduMenu(int rootId) {
   // Add PDU-specific settings and limits
   int limitsId = addMenu("Limits & Protection", rootId);
   addMenuItem(rootId, MenuItem("Overcurrent threshold (A)", MenuActionType::CALLBACK, -1, [this](){ /* set threshold */ }));
-  addMenuItem(rootId, MenuItem("Overcurrent action", MenuActionType::CALLBACK, -1, [this](){ /* set action */ }));
-  addMenuItem(rootId, MenuItem("Power cycle", MenuActionType::CALLBACK, -1, [this](){ /* power cycle */ }));
-  addMenuItem(rootId, MenuItem("Relay state", MenuActionType::CALLBACK, -1, [this](){ /* toggle relay */ }));
   addMenuItem(rootId, MenuItem("Current limit", MenuActionType::CALLBACK, -1, [this](){ /* set current limit */ }));
   addMenuItem(rootId, MenuItem("Firmware version", MenuActionType::NONE));
 }
@@ -259,56 +271,57 @@ void IRAM_ATTR TFTDisplay::isr_handleDown() { if(_instance && _instance->interru
 void IRAM_ATTR TFTDisplay::isr_handleBack() { if(_instance && _instance->interruptTimer()) _instance->BackPressed = true;}
 void IRAM_ATTR TFTDisplay::isr_handleConfirm() { if(_instance && _instance->interruptTimer()) _instance->ConfirmPressed = true;}
 
-
 void TFTDisplay::processButtonEditing() {
   if (editing) {
 
-    if (UpPressed) {
+    if (UpPressed && !saveSelected && !backSelected) {
         editor.nextChar();
         drawEditorScreen();
         UpPressed = false;
     }
 
-    if (DownPressed) {
+    if (DownPressed && !saveSelected && !backSelected) {
         editor.prevChar();
         drawEditorScreen();
         DownPressed = false;
     }
 
     if (BackPressed) {
-        if (!editor.moveLeft()) {
-            // Kilép szerkesztésből mentés nélkül
-            editing = false;
-            drawMenuWindow();
+        saveSelected = false;
+        if(!editor.moveLeft()){
+          backSelected = true;
+          return;
         }
+        else backSelected = false;
         drawEditorScreen();
         BackPressed = false;
+
+        if(backSelected) {
+            editing = false;
+            drawMenuWindow();
+            backSelected = false;
+        }
     }
 
     if (ConfirmPressed) {
-        confirmPressStart = millis();
-        confirmLongPressed = true;
-        ConfirmPressed = false;
-    }
-
-    // Check long press
-    if (confirmLongPressed && digitalRead(BTN_CONFIRM) == LOW) {
-        if (millis() - confirmPressStart > 800) {
-            confirmLongPressed = false;
-            // Mentés
-            if (editorSaveCallback) editorSaveCallback(editor.get());
-            editing = false;
-            drawMenuWindow();
-        }
-    }
-
-    // Release confirm = move cursor
-    if (confirmLongPressed && digitalRead(BTN_CONFIRM) == HIGH) {
-        confirmLongPressed = false;
-        if (editor.moveRight() == false) {
-            // end reached → cursor stays
-        }
-        drawEditorScreen();
+      backSelected = false;
+      if(!editor.moveRight()) {
+        saveSelected = true;
+        return;
+      }
+      drawEditorScreen();
+      ConfirmPressed = false;
+      if(saveSelected) {
+          // Finished editing
+          editing = false;
+          drawMenuWindow();
+          saveSelected = false;
+          ConfirmPressed = false;
+          if (editorSaveCallback) {
+              editorSaveCallback(editor.get());
+          }
+          return; // DO NOT fall into normal processing
+      }
     }
   return; // DO NOT fall into normal processing
   }
@@ -369,7 +382,7 @@ void TFTDisplay::performMenuItemAction(int menuId, int itemIndex) {
     } 
   } else if (it.actionType == MenuActionType::CALLBACK) {
     if (it.cb) it.cb();
-    drawMenuWindow();
+    else drawMenuWindow();
   }
 }
 
@@ -448,7 +461,7 @@ void TFTDisplay::updateDynamicValues() {
       _tft.setTextColor(TFT_GREEN, TFT_BLACK);
     }
     _tft.fillRect(140, y, 80, rowHeight, TFT_BLACK);
-    _tft.drawString(menus[mIdx].items[i].value, 100, y);
+    _tft.drawString(menus[mIdx].items[i].value, 110, y);
   }
 }
 
@@ -475,7 +488,11 @@ void TFTDisplay::drawMenuWindow() {
     _tft.drawString(menus[idx].items[i].name,startOfTextsLeft,y+startOfTextsFromBlue);
     if(menus[idx].items[i].value.length() > 0) {
       _tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      _tft.drawString(menus[idx].items[i].value, 100, y);
+      if (getMenuById(currentMenuId)->title == "IEC Info") {
+      _tft.drawString(menus[idx].items[i].value, 130, y);
+      } else {
+       _tft.drawString(menus[idx].items[i].value, 110, y);
+      }
     }
   }
 
@@ -523,7 +540,7 @@ void TFTDisplay::updateCursor() {
     _tft.drawString(menus[mIdx].items[lastSelection].name, startOfTextsLeft, yOld + startOfTextsFromBlue);
     if(menus[mIdx].items[lastSelection].value.length() > 0) {
       _tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      _tft.drawString(menus[mIdx].items[lastSelection].value, 100, yOld);
+      _tft.drawString(menus[mIdx].items[lastSelection].value, 110, yOld);
     }
   }
 
@@ -535,7 +552,7 @@ void TFTDisplay::updateCursor() {
     _tft.drawString(menus[mIdx].items[currentSelection].name, startOfTextsLeft, yNew + startOfTextsFromBlue);
     if(menus[mIdx].items[currentSelection].value.length() > 0) {
       _tft.setTextColor(TFT_WHITE, TFT_BLUE);
-      _tft.drawString(menus[mIdx].items[currentSelection].value, 100, yNew);
+      _tft.drawString(menus[mIdx].items[currentSelection].value, 110, yNew);
     }
   }
 

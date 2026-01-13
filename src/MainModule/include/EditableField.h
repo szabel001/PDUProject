@@ -46,6 +46,8 @@ public:
 private:
     String buffer;
     String allowed;
+    String backButton = "BACK";
+    String confirmButton = "SAVE";
     int cursorPos = 0;
 };
 

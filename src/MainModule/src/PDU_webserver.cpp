@@ -32,6 +32,8 @@ void PDU_webserver::setUpdateInterval(uint32_t ms) {
 
 // WS broadcast minden modul állapotáról
 void PDU_webserver::broadcastModules() {
+    if (millis() - lastMillis < updateInterval) return;
+    lastMillis = millis();
     String json = "{\"type\":\"update\",\"modules\":[";
     auto ids = iec->getFoundIECIDs();
     for(size_t i=0; i<ids.size(); i++) {

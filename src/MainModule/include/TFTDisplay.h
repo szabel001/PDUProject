@@ -41,7 +41,9 @@ public:
   TFTDisplay();
   void setupDisplay(IECControl& iec, networkLayerManager& networkMgr);
   void drawEditorScreen();
+  void drawDataViewScreen(const String &title, const std::vector<String> &dataLines);
   void setupMenu();
+  void drawSaveButton(bool selected);
   void processButtonEditing();
   void processButton();
   void handleConfirmButton();
@@ -57,6 +59,7 @@ private:
   int addMenu(const char* title,int parentId=-1);
   void addMenuItem(int menuId,const MenuItem& item);
   int findMenuIndexById(int id);
+  Menu *getMenuById(int id);
   void startEditing(const String &initialValue, const String &allowedChars, std::function<void(const String &)> saveCb);
   void performMenuItemAction(int menuId, int itemIndex);
   void buildNetworkingMenu(int settingsMenuId);
@@ -86,6 +89,7 @@ private:
   static void IRAM_ATTR isr_handleDown();
   static void IRAM_ATTR isr_handleBack();
   static void IRAM_ATTR isr_handleConfirm();
+  void drawBackButton(bool selected);
   bool interruptTimer();
   volatile unsigned long lastButtonPressed=0;
   volatile bool UpPressed=false;
@@ -93,11 +97,16 @@ private:
   volatile bool BackPressed=false;
   volatile bool ConfirmPressed=false;
 
+  bool backSelected = false;
+  bool saveSelected = false;
+
   bool editing = false;
   EditableField editor;
   std::function<void(const String&)> editorSaveCallback;
   unsigned long confirmPressStart = 0;
+  unsigned long backPressStart = 0;
   bool confirmLongPressed = false;
+  bool backLongPressed = false;
 };
 
 #endif

@@ -21,11 +21,13 @@ class networkLayerManager {
   public:
   networkLayerManager(){}
   void initInternetProtocol();
-  void setupWifi(wifiMode mode);
+  void setupAPWifi(bool status);
   void configureWifiSSID(String ssid);
   void configureWifiPassword(String password);
-  void configureWifiCredentials(String ssid, String password, wifiMode mode); // set default values
-  void configureWifi(uint8_t ip[], uint8_t gateway[], uint8_t subnet[], wifiMode mode);
+  bool getWiFiAPStatus();
+  bool getWiFiSTAStatus();
+  bool setfWifiSTA(bool status);
+  void configureWifiAP(uint8_t ip[], uint8_t gateway[], uint8_t subnet[], wifiMode mode);
   void configureEthernet(uint8_t ip[], uint8_t gateway[], uint8_t subnet[]);
 
   bool getNetworkStatus();
@@ -37,6 +39,9 @@ class networkLayerManager {
   private:
   bool _checkEthernetConnection();       // Check if the Ethernet connection is available - connected cable and hardware
   bool _networkStatus;                   //
+  bool WiFiSTAStatus;
+  bool WiFiAPStatus;
+
   float _currentData;                    //
 
   wifiMode _actualWifiMode;              // Wi-Fi mode - OFF, STA, AP
