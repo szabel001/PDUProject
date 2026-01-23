@@ -35,32 +35,11 @@ Menu *TFTDisplay::getMenuById(int id) {
   return nullptr;
 }
 
-void TFTDisplay::drawBackButton(bool selected) {
-    _tft.fillRect(0, 90, 60, 20, TFT_BLACK);
-    if(selected)
-        _tft.setTextColor(TFT_YELLOW, TFT_BLUE);
-    else
-        _tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    _tft.drawString("BACK", 10, 90);
-}
-
-
-void TFTDisplay::drawSaveButton(bool selected) {
-    int charWidth = 7;
-    _tft.fillRect(_tft.width() - 10 - _tft.textWidth("SAVE"), 90, _tft.textWidth("SAVE"), 20, TFT_BLACK);
-        if(selected)
-        _tft.setTextColor(TFT_YELLOW, TFT_BLUE);
-    else
-        _tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    _tft.drawString("SAVE", _tft.width() - 10 - _tft.textWidth("SAVE"), 90);
-}
-
-void TFTDisplay::startEditing(const String& initialValue,
-                              const String& allowedChars,
+void TFTDisplay::startEditing(int initialValue,
                               std::function<void(const String&)> saveCb)
 {
     editing = true;
-    editor.begin(initialValue, allowedChars);
+    editor.begin(initialValue);
     editorSaveCallback = saveCb;
 
     _tft.fillScreen(TFT_BLACK);
@@ -76,23 +55,21 @@ void TFTDisplay::drawEditorScreen() {
     String displayStr = editor.get();
     _tft.drawString(displayStr, (_tft.width()/2) - (_tft.textWidth(displayStr)), 50);
     _tft.setTextColor(TFT_WHITE, TFT_BLUE);
-    _tft.drawString(String(displayStr[editor.getCursor()]), (_tft.width()/2) - (_tft.textWidth(displayStr)) + _tft.textWidth(displayStr.substring(0, editor.getCursor())), 50);
-
-    drawBackButton(backSelected);
-    drawSaveButton(saveSelected);
+    _tft.drawString(String(displayStr), (_tft.width()/2) - (_tft.textWidth(displayStr)), 50);
 }
 
 void TFTDisplay::drawDataViewScreen(const String &title, const std::vector<String> &dataLines) {
+    dataview = true;
     _tft.fillScreen(TFT_BLACK);
     _tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    _tft.setTextFont(1);
     _tft.drawString(title, 10, 10);
+    _tft.setTextFont(2);
 
     _tft.setTextColor(TFT_WHITE, TFT_BLACK);
     for (size_t i = 0; i < dataLines.size(); i++) {
-        _tft.drawString(dataLines[i], 10, 40 + i * 20);
+        _tft.drawString(dataLines[i] + '\n', 10, 40 + i * 20);
     }
-
-    drawBackButton(true); // Back button always selected in view mode
 }
 
 // --- Setup menu (modular, dynamic) ---
@@ -105,7 +82,25 @@ void TFTDisplay::setupMenu() {
   // Settings
   int settingsId = addMenu("Settings", mainId);
   addMenuItem(mainId, MenuItem("Settings", MenuActionType::NAVIGATE, settingsId));
+  buildNetworkingMenu(settingsId);
+  //int pduModbusId = addMenu("PDU Modbus", settingsId);
+  //addMenuItem(settingsId, MenuItem("PDU Modbus", MenuActionType::NAVIGATE, pduModbusId));
+  //addMenuItem(pduModbusId, MenuItem("Set Modbus Address", MenuActionType::CALLBACK, -1, [this](){ /* set modbus address */ }));
+  int measuringId = addMenu("Measuring", settingsId);
+  addMenuItem(settingsId, MenuItem("Measuring Settings", MenuActionType::NAVIGATE, measuringId));
+  addMenuItem(measuringId, MenuItem("Temp. scale", MenuActionType::CALLBACK, -1, [this, measuringId](){ 
+    _envSensor->setTemperatureScale(!(_envSensor->isFahrenheit()));
+    getMenuById(measuringId)->items[0].value = String((_envSensor->isFahrenheit()) ? (char)247 + "F" : (char)247 + "C");
+    drawMenuWindow();
+  }));getMenuById(measuringId)->items[0].value = String((_envSensor->isFahrenheit()) ? (char)247 + "F" : (char)247 + "C");
 
+  addMenuItem(measuringId, MenuItem("IEC meas. cycleTime [s]", MenuActionType::CALLBACK, -1, [this](){ 
+    startEditing(1, [this](const String& val) {
+      uint16_t cycleTime = val.toInt();
+      _iec->setpowerDataUpdateCycleTime(cycleTime);
+    });
+  }));
+ 
   // IEC modules
   int selectIecId = addMenu("Select IEC Module", mainId);
   addMenuItem(mainId, MenuItem("IEC Modules Menu", MenuActionType::NAVIGATE, selectIecId));
@@ -113,28 +108,17 @@ void TFTDisplay::setupMenu() {
   // PDU Status
   int pduStatusId = addMenu("PDU Status", mainId);
   addMenuItem(mainId, MenuItem("PDU Status", MenuActionType::NAVIGATE, pduStatusId));
-
-  // AHT10
-  int aht10Id = addMenu("AHT10 Sensor", mainId);
-  addMenuItem(mainId, MenuItem("AHT10", MenuActionType::NAVIGATE, aht10Id));
-
-  // --- Build settings subtree ---
-  buildNetworkingMenu(settingsId);
-
-  // Measuring / PDU Modbus / IEC Modbus / Security / OTA / System / Logs
-  addMenuItem(settingsId, MenuItem("PDU Modbus", MenuActionType::CALLBACK, -1, [this](){ /* open PDU Modbus settings later */ }));
-  addMenuItem(settingsId, MenuItem("IEC Modbus", MenuActionType::CALLBACK, -1, [this](){ /* open IEC Modbus settings later */ }));
-  addMenuItem(settingsId, MenuItem("Measuring", MenuActionType::CALLBACK, -1, [this](){ /* measuring settings */ }));
-  addMenuItem(settingsId, MenuItem("System", MenuActionType::CALLBACK, -1, [this](){ /* system */ }));
-
-  // --- PDU Status contents ---
   addMenuItem(pduStatusId, MenuItem("Voltage (V):", MenuActionType::NONE));
   addMenuItem(pduStatusId, MenuItem("Current (A):", MenuActionType::NONE));
   addMenuItem(pduStatusId, MenuItem("Power (W):", MenuActionType::NONE));
   addMenuItem(pduStatusId, MenuItem("Energy (kWh):", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("Temp sensor:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("Overcurrent threshold (A)", MenuActionType::CALLBACK, -1, [this](){ /* set threshold */ }));
+  addMenuItem(pduStatusId, MenuItem("Current limit", MenuActionType::CALLBACK, -1, [this](){ /* set current limit */ }));
+  addMenuItem(pduStatusId, MenuItem("Firmware version", MenuActionType::NONE));
 
-  // --- AHT10 ---
+  // AHT10
+  int aht10Id = addMenu("AHT10 Sensor", mainId);
+  addMenuItem(mainId, MenuItem("AHT10", MenuActionType::NAVIGATE, aht10Id));
   addMenuItem(aht10Id, MenuItem("Temperature:", MenuActionType::NONE));
   addMenuItem(aht10Id, MenuItem("Humidity:", MenuActionType::NONE));
 
@@ -143,15 +127,13 @@ void TFTDisplay::setupMenu() {
 
   // create IEC module details menu (single template - will be updated dynamically)
   int iecInfoId = addMenu("IEC Info", iecMenuId);
-  int iecStatusId = addMenu("IEC Status", iecMenuId);
-  int iecSettingsId = addMenu("IEC Settings", iecMenuId);
-
   addMenuItem(iecMenuId, MenuItem("IEC Info", MenuActionType::NAVIGATE, iecInfoId));
-  addMenuItem(iecMenuId, MenuItem("IEC Status", MenuActionType::NAVIGATE, iecStatusId));
-  addMenuItem(iecMenuId, MenuItem("IEC Settings", MenuActionType::NAVIGATE, iecSettingsId));
 
-  // PDU advanced menu
-  buildPduMenu(pduStatusId);
+  int iecStatusId = addMenu("IEC Status", iecMenuId);
+  addMenuItem(iecMenuId, MenuItem("IEC Status", MenuActionType::NAVIGATE, iecStatusId));
+
+  int iecSettingsId = addMenu("IEC Settings", iecMenuId);
+  addMenuItem(iecMenuId, MenuItem("IEC Settings", MenuActionType::NAVIGATE, iecSettingsId));
 
   // Set starting menu to main
   currentMenuId = mainId;
@@ -182,8 +164,10 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
           drawDataViewScreen("WiFi AP SSID & Password", { "SSID: " + ssid, "Password: " + password });
       }));
 
-  addMenuItem(wifiId, MenuItem("Set WiFi AP status:", MenuActionType::CALLBACK, -1, [this](){ 
+  addMenuItem(wifiId, MenuItem("Set WiFi AP status:", MenuActionType::CALLBACK, -1, [this, wifiId](){ 
     _networkMgr->setupAPWifi(!_networkMgr->getWiFiAPStatus());
+    getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAPStatus() ? "[ON]" : "[OFF]";
+    drawMenuWindow();
   }));getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAPStatus() ? "[ON]" : "[OFF]";
 
   // Ethernet items
@@ -192,17 +176,10 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
   addMenuItem(ethId, MenuItem("Gateway:", MenuActionType::CALLBACK, -1, [this](){ /* set GW */ }));
 }
 
-void TFTDisplay::buildPduMenu(int rootId) {
-  // Add PDU-specific settings and limits
-  int limitsId = addMenu("Limits & Protection", rootId);
-  addMenuItem(rootId, MenuItem("Overcurrent threshold (A)", MenuActionType::CALLBACK, -1, [this](){ /* set threshold */ }));
-  addMenuItem(rootId, MenuItem("Current limit", MenuActionType::CALLBACK, -1, [this](){ /* set current limit */ }));
-  addMenuItem(rootId, MenuItem("Firmware version", MenuActionType::NONE));
-}
-
-void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr) {
+void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr, EnvironmentSensor& envSensor) {
   _iec = &iec;
   _networkMgr = &networkMgr;
+  _envSensor = &envSensor;
   _tft.init();
   _tft.setRotation(1);
   _tft.fillScreen(TFT_BLACK);
@@ -219,8 +196,6 @@ void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr) 
   attachInterrupt(BTN_BACK, TFTDisplay::isr_handleBack, FALLING);
   attachInterrupt(BTN_CONFIRM, TFTDisplay::isr_handleConfirm, FALLING);
 
-  // Now that IECControl is available, populate IEC modules menu with IDs
-  // Instead of relying on index search by id here, we'll search for the menu titled "IEC Module Menu"
   int selectIecId = -1;
   int iecMenuId = -1;
   for (auto &m : menus) if (String(m.title) == "Select IEC Module") selectIecId = m.id;
@@ -230,20 +205,15 @@ void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr) 
     if (idx >= 0) {
       std::vector<uint8_t> ids = _iec->getFoundIECIDs();
       if (ids.size() == 0) {
-        // No modules found
         menus[idx].items.clear();
         menus[idx].items.push_back(MenuItem("No IEC modules have found!", MenuActionType::NONE));
       } else {
-          // Clear placeholder items
           menus[idx].items.clear();
           for (size_t i = 0; i < ids.size(); ++i) {
             uint8_t moduleId = ids[i];
-            // Create a per-module menu that navigates into IEC submenu with selected module bound
             addMenuItem(selectIecId, MenuItem("IEC Module " + String(moduleId), MenuActionType::NAVIGATE, iecMenuId, [this, moduleId](){
-            // set selected module and open module menu
             selectedIECModuleID = moduleId;
             updateIECDetailMenus(selectedIECModuleID);
-            // navigate to IEC Module detail menu (we reuse "IEC Info" id)
             int _iecMenuId = -1; 
             for (auto &m : menus) if (String(m.title) == "IEC Module Menu") { _iecMenuId = m.id; break; }
             if (_iecMenuId >= 0) currentMenuId = _iecMenuId;
@@ -271,70 +241,25 @@ void IRAM_ATTR TFTDisplay::isr_handleDown() { if(_instance && _instance->interru
 void IRAM_ATTR TFTDisplay::isr_handleBack() { if(_instance && _instance->interruptTimer()) _instance->BackPressed = true;}
 void IRAM_ATTR TFTDisplay::isr_handleConfirm() { if(_instance && _instance->interruptTimer()) _instance->ConfirmPressed = true;}
 
-void TFTDisplay::processButtonEditing() {
-  if (editing) {
-
-    if (UpPressed && !saveSelected && !backSelected) {
-        editor.nextChar();
+void TFTDisplay::processButton() {
+  if(UpPressed){
+    if (editing) {
+        editor.nextInt();
         drawEditorScreen();
         UpPressed = false;
-    }
-
-    if (DownPressed && !saveSelected && !backSelected) {
-        editor.prevChar();
-        drawEditorScreen();
-        DownPressed = false;
-    }
-
-    if (BackPressed) {
-        saveSelected = false;
-        if(!editor.moveLeft()){
-          backSelected = true;
-          return;
-        }
-        else backSelected = false;
-        drawEditorScreen();
-        BackPressed = false;
-
-        if(backSelected) {
-            editing = false;
-            drawMenuWindow();
-            backSelected = false;
-        }
-    }
-
-    if (ConfirmPressed) {
-      backSelected = false;
-      if(!editor.moveRight()) {
-        saveSelected = true;
         return;
-      }
-      drawEditorScreen();
-      ConfirmPressed = false;
-      if(saveSelected) {
-          // Finished editing
-          editing = false;
-          drawMenuWindow();
-          saveSelected = false;
-          ConfirmPressed = false;
-          if (editorSaveCallback) {
-              editorSaveCallback(editor.get());
-          }
-          return; // DO NOT fall into normal processing
-      }
     }
-  return; // DO NOT fall into normal processing
-  }
-}
-
-void TFTDisplay::processButton() {
-  processButtonEditing();
-  if(UpPressed){
     if(currentSelection>0) currentSelection--;
     UpPressed = false;
   }
 
   if(DownPressed){
+    if (editing) {
+        editor.prevInt();
+        drawEditorScreen();
+        DownPressed = false;
+        return;
+    }
     int mIdx = findMenuIndexById(currentMenuId);
     if (mIdx >= 0) {
       if(currentSelection < (int)menus[mIdx].items.size()-1) currentSelection++;
@@ -344,45 +269,46 @@ void TFTDisplay::processButton() {
 
   if(BackPressed){
     int mIdx = findMenuIndexById(currentMenuId);
-    if (mIdx >= 0 && menus[mIdx].parentId >= 0) {
+    if (mIdx >= 0 && menus[mIdx].parentId >= 0 && !editing && !dataview) {
       currentMenuId = menus[mIdx].parentId;
       currentSelection=0;
       windowStart=0;
       lastSelection=-1;
-      drawMenuWindow();
     }
+    editing = false;
+    dataview = false;
     BackPressed = false;
+    drawMenuWindow();
   }
 
   if(ConfirmPressed){
-    handleConfirmButton();
-  }
-}
-
-void TFTDisplay::handleConfirmButton() {
-  performMenuItemAction(currentMenuId, currentSelection);
-  ConfirmPressed = false;
-}
-
-void TFTDisplay::performMenuItemAction(int menuId, int itemIndex) {
-  int idx = findMenuIndexById(menuId);
-  if (idx < 0) return;
-  if (itemIndex < 0 || itemIndex >= (int)menus[idx].items.size()) return;
-  MenuItem &it = menus[idx].items[itemIndex];
-
-  if (it.actionType == MenuActionType::NAVIGATE) {
-    // if targetMenuId set, use it; else rely on callback binding used in IEC module entries
-    if (it.targetMenuId >= 0) {
-      currentMenuId = it.targetMenuId;
-      currentSelection = 0;
-      windowStart = 0;
-      lastSelection = -1;
-      if (it.cb) it.cb();  // callback can change currentMenuId} 
+    if (editing) {
+      editing = false;
+      if (editorSaveCallback) {
+        editorSaveCallback(editor.get());
+      }
       drawMenuWindow();
-    } 
-  } else if (it.actionType == MenuActionType::CALLBACK) {
-    if (it.cb) it.cb();
-    else drawMenuWindow();
+      return;
+    }
+
+    int idx = findMenuIndexById(currentMenuId);
+    if (idx < 0) return;
+    if (currentSelection < 0 || currentSelection >= (int)menus[idx].items.size()) return;
+    MenuItem &it = menus[idx].items[currentSelection];
+
+    if (it.actionType == MenuActionType::NAVIGATE) {
+      if (it.targetMenuId >= 0) {
+        currentMenuId = it.targetMenuId;
+        currentSelection = 0;
+        windowStart = 0;
+        lastSelection = -1;
+        if (it.cb) it.cb();  // callback can change currentMenuId} 
+        drawMenuWindow();
+      } 
+    } else if (it.actionType == MenuActionType::CALLBACK) {
+      if (it.cb && !editing) it.cb();
+    }
+    ConfirmPressed = false;
   }
 }
 
@@ -391,7 +317,6 @@ void TFTDisplay::performMenuItemAction(int menuId, int itemIndex) {
 //-----------------------------------------------------------------------------------------------------------------//
 
 void TFTDisplay::updateIECDetailMenus(int id) {
-  // Find IEC Info and Status menus and set their items' values
   if (id == -1) return;
   for (auto &m : menus) {
     if (String(m.title) == "IEC Info") {
@@ -426,7 +351,6 @@ void TFTDisplay::updateActiveMenuPeriodic() {
 
   lastAutoUpdate = millis();
 
-// If we are viewing IEC detail menus, refresh
   int idx = findMenuIndexById(currentMenuId);
   if (idx < 0) return;
   String title = menus[idx].title;
@@ -461,7 +385,7 @@ void TFTDisplay::updateDynamicValues() {
       _tft.setTextColor(TFT_GREEN, TFT_BLACK);
     }
     _tft.fillRect(140, y, 80, rowHeight, TFT_BLACK);
-    _tft.drawString(menus[mIdx].items[i].value, 110, y);
+    _tft.drawString(menus[mIdx].items[i].value, 120, y);
   }
 }
 
@@ -485,13 +409,13 @@ void TFTDisplay::drawMenuWindow() {
   for(int i = windowStart; i < end; i++){
     int y = startOfTexts + (i - windowStart)*rowHeight;
     _tft.setTextColor(TFT_WHITE,TFT_BLACK);
-    _tft.drawString(menus[idx].items[i].name,startOfTextsLeft,y+startOfTextsFromBlue);
+    _tft.drawString(menus[idx].items[i].name, startOfTextsLeft, y+startOfTextsFromBlue);
     if(menus[idx].items[i].value.length() > 0) {
       _tft.setTextColor(TFT_GREEN, TFT_BLACK);
       if (getMenuById(currentMenuId)->title == "IEC Info") {
-      _tft.drawString(menus[idx].items[i].value, 130, y);
+      _tft.drawString(menus[idx].items[i].value, 120, y);
       } else {
-       _tft.drawString(menus[idx].items[i].value, 110, y);
+       _tft.drawString(menus[idx].items[i].value, 120, y);
       }
     }
   }
@@ -500,17 +424,21 @@ void TFTDisplay::drawMenuWindow() {
 }
 
 void TFTDisplay::updateMenuValues() {
-  // Called by external loop to push updated values (e.g. sensors)
-  // Example: update PDU status values
   for (auto &m : menus) {
     if (String(m.title) == "PDU Status") {
-      // attempt to read from IEC or local sensors - here we just stub
+      if (m.items.size() >= 6) {
+        // stub: replace with real pdu status calls
+        m.items[0].value = "-- V";
+        m.items[1].value = "-- A";
+        m.items[2].value = "-- W";
+        m.items[3].value = "-- kWh";
+      }
     }
 
     if (String(m.title) == "AHT10 Sensor") {
       if (m.items.size() >= 2) {
         // stub: replace with real aht10 calls
-        m.items[0].value = "-- C";
+        m.items[0].value = "--" + String(( _envSensor->isFahrenheit()) ? (char)247 + "F" : (char)247 + "C");
         m.items[1].value = "-- %";
       }
     }
@@ -540,7 +468,7 @@ void TFTDisplay::updateCursor() {
     _tft.drawString(menus[mIdx].items[lastSelection].name, startOfTextsLeft, yOld + startOfTextsFromBlue);
     if(menus[mIdx].items[lastSelection].value.length() > 0) {
       _tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      _tft.drawString(menus[mIdx].items[lastSelection].value, 110, yOld);
+      _tft.drawString(menus[mIdx].items[lastSelection].value, 120, yOld);
     }
   }
 
@@ -552,7 +480,7 @@ void TFTDisplay::updateCursor() {
     _tft.drawString(menus[mIdx].items[currentSelection].name, startOfTextsLeft, yNew + startOfTextsFromBlue);
     if(menus[mIdx].items[currentSelection].value.length() > 0) {
       _tft.setTextColor(TFT_WHITE, TFT_BLUE);
-      _tft.drawString(menus[mIdx].items[currentSelection].value, 110, yNew);
+      _tft.drawString(menus[mIdx].items[currentSelection].value, 120, yNew);
     }
   }
 

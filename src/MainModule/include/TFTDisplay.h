@@ -6,6 +6,7 @@
 #include <vector>
 #include "EditableField.h"
 #include "networkLayerManager.h"
+#include "EnvironmentSensor.h"
 
 #define DEBOUNCE_DELAY 150
 
@@ -39,7 +40,7 @@ struct Menu {
 class TFTDisplay {
 public:
   TFTDisplay();
-  void setupDisplay(IECControl& iec, networkLayerManager& networkMgr);
+  void setupDisplay(IECControl &iec, networkLayerManager &networkMgr, EnvironmentSensor &envSensor);
   void drawEditorScreen();
   void drawDataViewScreen(const String &title, const std::vector<String> &dataLines);
   void setupMenu();
@@ -60,11 +61,8 @@ private:
   void addMenuItem(int menuId,const MenuItem& item);
   int findMenuIndexById(int id);
   Menu *getMenuById(int id);
-  void startEditing(const String &initialValue, const String &allowedChars, std::function<void(const String &)> saveCb);
-  void performMenuItemAction(int menuId, int itemIndex);
+  void startEditing(int initialValue, std::function<void(const String &)> saveCb);
   void buildNetworkingMenu(int settingsMenuId);
-  void buildPduMenu(int rootId);
-  void buildIecMenus(int iecModulesMenuId);
 
   int currentMenuId=-1;
   volatile int currentSelection=0;
@@ -76,6 +74,7 @@ private:
   TFT_eSPI _tft;
   IECControl* _iec=nullptr;
   networkLayerManager* _networkMgr=nullptr;
+  EnvironmentSensor* _envSensor=nullptr;
   
   int windowStart=0;
   const int maxVisible=4;
@@ -89,7 +88,6 @@ private:
   static void IRAM_ATTR isr_handleDown();
   static void IRAM_ATTR isr_handleBack();
   static void IRAM_ATTR isr_handleConfirm();
-  void drawBackButton(bool selected);
   bool interruptTimer();
   volatile unsigned long lastButtonPressed=0;
   volatile bool UpPressed=false;
@@ -101,6 +99,7 @@ private:
   bool saveSelected = false;
 
   bool editing = false;
+  bool dataview = false;
   EditableField editor;
   std::function<void(const String&)> editorSaveCallback;
   unsigned long confirmPressStart = 0;

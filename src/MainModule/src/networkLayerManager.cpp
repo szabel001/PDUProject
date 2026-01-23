@@ -5,35 +5,26 @@
 #endif
 
 void networkLayerManager::initInternetProtocol() {  
-  _actWifiAP_SSID = "PDUMain-AP"; // default AP SSID
-  if (readStringFromNVS("ssid_ap", "") == "") writeStringToNVS("ssid_ap", _actWifiAP_SSID);
-  _actWifiAP_Password = "12345678"; // default AP password
-  if (readStringFromNVS("pwd_ap", "") == "") writeStringToNVS("pwd_ap", _actWifiAP_Password);
+  _WifiAP_SSID = "PDUMain-AP"; // default AP SSID
+  if (readStringFromNVS("ssid_ap", "") == "") writeStringToNVS("ssid_ap", _WifiAP_SSID);
+  _WifiAP_Password = "12345678"; // default AP password
+  if (readStringFromNVS("pwd_ap", "") == "") writeStringToNVS("pwd_ap", _WifiAP_Password);
 
-  _actEthernetIP = IPAddress(192, 168, 55, 10);
-  _actEthernetGateway = IPAddress(192, 168, 55, 1);
-  _actEthernetSubnet = IPAddress(255, 255, 255, 0);
+  _EthernetIP = IPAddress(192, 168, 0, 5);
+  _EthernetGateway = IPAddress(192, 168, 0, 1);
+  _EthernetSubnet = IPAddress(255, 255, 255, 0);
+  _EthernetDNS = IPAddress(8, 8, 8, 8);
 
   byte mac[] = {0x4C, 0x75, 0x25, 0xE4, 0xA0, 0x3F}; // TODO: use a random MAC address generator or the MAC address of the ESP32
 
   #ifdef DEBUG
     Serial.print(F("\nStart AsyncSimpleServer_ESP32_W5500 on "));Serial.print(ARDUINO_BOARD);Serial.print(F(" with "));Serial.println(SHIELD_TYPE);
     Serial.println(ASYNC_WEBSERVER_ESP32_W5500_VERSION);
-
-    AWS_LOGWARN(F("Default SPI pinout:"));
-    AWS_LOGWARN1(F("SPI_HOST:"), ETH_SPI_HOST);
-    AWS_LOGWARN1(F("MOSI:"), MOSI_GPIO);
-    AWS_LOGWARN1(F("MISO:"), MISO_GPIO);
-    AWS_LOGWARN1(F("SCK:"),  SCK_GPIO);
-    AWS_LOGWARN1(F("CS:"),   CS_GPIO);
-    AWS_LOGWARN1(F("INT:"),  INT_GPIO);
-    AWS_LOGWARN1(F("SPI Clock (MHz):"), SPI_CLOCK_MHZ);
-    AWS_LOGWARN(F("========================="));
   #endif
 
   ESP32_W5500_onEvent();
   if (ETH.begin(ETH_MISO, ETH_MOSI, ETH_SCK, ETH_CS, ETH_INTn, ETH_SPI_FREQ, SPI2_HOST, mac)) { //SPI must be SPI2_HOST ()
-    ETH.config(_actEthernetIP, _actEthernetGateway, _actEthernetSubnet);
+    ETH.config(_EthernetIP, _EthernetGateway, _EthernetSubnet);
 
     delay(100);
 
@@ -50,11 +41,14 @@ void networkLayerManager::initInternetProtocol() {
   WiFi.mode(WIFI_OFF); // Disable Wi-Fi to start with
 }
 
+///----------------------------------------------------------------------------------------------
+///-------------------------------- Wi-Fi AP mode setup -----------------------------------------
+///----------------------------------------------------------------------------------------------
 void networkLayerManager::setupAPWifi(bool status) {
   WiFi.disconnect(true); // Disconnect from the current network and stop the Wi-Fi
   delay(200);
   if(status == true) {
-    WiFi.softAP(_actWifiAP_SSID, _actWifiAP_Password);
+    WiFi.softAP(_WifiAP_SSID, _WifiAP_Password);
     #ifdef DEBUG
       Serial.println("Wi-Fi AP mode started.");
       Serial.print("IP address: ");
@@ -72,12 +66,12 @@ void networkLayerManager::setupAPWifi(bool status) {
 }
 
 void networkLayerManager::configureWifiSSID(String ssid) {
-  _actWifiSTA_SSID = ssid;
+  _WifiSTA_SSID = ssid;
   writeStringToNVS("ssid_sta", ssid);
 }
 
 void networkLayerManager::configureWifiPassword(String password) {
-  _actWifiSTA_Password = password;
+  _WifiSTA_Password = password;
   writeStringToNVS("pwd_sta", password);
 }
 
@@ -85,13 +79,48 @@ bool networkLayerManager::getWiFiAPStatus() {
   return WiFiAPStatus;
 }
 
+void networkLayerManager::configureWifiIP(uint8_t ip[]) {
+  _WifiIP = IPAddress(ip[0], ip[1], ip[2], ip[3]);
+}
+
+void networkLayerManager::configureWifiGateway(uint8_t gateway[]) {
+  _WifiGateway = IPAddress(gateway[0], gateway[1], gateway[2], gateway[3]);
+}
+
+void networkLayerManager::configureWifiSubnet(uint8_t subnet[]) {
+  _WifiSubnet = IPAddress(subnet[0], subnet[1], subnet[2], subnet[3]);
+}
+
+void networkLayerManager::configureWifiDNS(uint8_t dns[]) {
+  IPAddress dnsIP(dns[0], dns[1], dns[2], dns[3]);
+  WiFi.config(_WifiIP, _WifiGateway, _WifiSubnet, dnsIP);
+}
+
+bool networkLayerManager::turnOnWifiAP(bool status) {
+  if (status == true && !WiFiAPStatus && !getWiFiSTAStatus() && _WifiAP_SSID != "" && _WifiAP_Password.length() >=8) {
+    WiFi.softAPConfig(_WifiIP, _WifiGateway, _WifiSubnet);
+    WiFi.softAP(_WifiAP_SSID, _WifiAP_Password);
+    WiFiAPStatus = true;
+    return true;
+  } else {
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+    WiFiAPStatus = false;
+    return false;
+  }
+}
+
+///----------------------------------------------------------------------------------------------
+///-------------------------------- Wi-Fi STA mode setup ----------------------------------------
+///----------------------------------------------------------------------------------------------
+
 bool networkLayerManager::getWiFiSTAStatus() {
   return WiFiSTAStatus;
 }
 
 bool networkLayerManager::setfWifiSTA(bool status) {
   if (status) {
-    WiFi.begin(_actWifiSTA_SSID, _actWifiSTA_Password);
+    WiFi.begin(_WifiSTA_SSID, _WifiSTA_Password);
     if (WiFi.mode(WIFI_STA) == false) {
       #ifdef DEBUG
         Serial.println("Failed to set Wi-Fi mode to STA.");
@@ -100,7 +129,7 @@ bool networkLayerManager::setfWifiSTA(bool status) {
       return false;
     }
     #ifdef DEBUG
-      Serial.println("Wi-Fi mode is STA. Connecting to SSID: " + _actWifiSTA_SSID);
+      Serial.println("Wi-Fi mode is STA. Connecting to SSID: " + _WifiSTA_SSID);
     #endif
     unsigned long startAttemptTime = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
@@ -130,31 +159,28 @@ bool networkLayerManager::setfWifiSTA(bool status) {
   }
 }
 
-void networkLayerManager::configureWifiAP(uint8_t ip[], uint8_t gateway[], uint8_t subnet[], wifiMode mode) {
-  _actWifiIP = IPAddress(ip[0], ip[1], ip[2], ip[3]);
-  _actWifiGateway = IPAddress(gateway[0], gateway[1], gateway[2], gateway[3]);
-  _actWifiSubnet = IPAddress(subnet[0], subnet[1], subnet[2], subnet[3]);
-  if (mode == wifiMode::STA) {
-    WiFi.config(_actWifiIP, _actWifiGateway, _actWifiSubnet);
-  } else if (mode == wifiMode::AP) {
-    WiFi.softAPConfig(_actWifiIP, _actWifiGateway, _actWifiSubnet);
-  }
+///----------------------------------------------------------------------------------------------
+///------------------------------- Ethernet configuration --------------------------------------
+///----------------------------------------------------------------------------------------------
+
+void networkLayerManager::configureEthernet_IP(uint8_t ip[]) {
+  IPAddress _EthernetIP(ip[0], ip[1], ip[2], ip[3]);
 }
 
-void networkLayerManager::configureEthernet(uint8_t ip[], uint8_t gateway[], uint8_t subnet[]) {
-  IPAddress myIP(ip[0], ip[1], ip[2], ip[3]);
-  IPAddress myGW(gateway[0], gateway[1], gateway[2], gateway[3]);
-  IPAddress mySN(subnet[0], subnet[1], subnet[2], subnet[3]);
-  ETH.config(myIP, myGW, mySN);
-  #ifdef DEBUG
-    Serial.println("Ethernet configuration done.");
-    Serial.print("IP address: ");
-    Serial.println(ETH.localIP());
-    Serial.print("Gateway: ");
-    Serial.println(ETH.gatewayIP());
-    Serial.print("Subnet: ");
-    Serial.println(ETH.subnetMask());
-  #endif
+void networkLayerManager::setEthernet_Gateway(uint8_t gateway[]) {
+  IPAddress _EthernetGateway(gateway[0], gateway[1], gateway[2], gateway[3]);
+}
+
+void networkLayerManager::setEthernet_Subnet(uint8_t subnet[]) {
+  IPAddress _EthernetSubnet(subnet[0], subnet[1], subnet[2], subnet[3]);
+}
+
+void networkLayerManager::setEthernet_DNS(uint8_t dns[]) {
+  IPAddress _EthernetDNS(dns[0], dns[1], dns[2], dns[3]);
+}
+
+void networkLayerManager::configureEthernet() {
+  ETH.config(_EthernetIP, _EthernetGateway, _EthernetSubnet, _EthernetDNS);
 }
 
 bool networkLayerManager::getNetworkStatus() {

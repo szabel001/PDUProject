@@ -1,11 +1,19 @@
 #include "EnvironmentSensor.h"
 
-Adafruit_AHTX0 aht;
-sensors_event_t humidity, temp;
+EnvironmentSensor::EnvironmentSensor() {
+}
 
 void EnvironmentSensor::setupEnvironmentSensor() {
   if (! aht.begin()) Serial.println("Could not find AHT? Check wiring");
   else Serial.println("AHT10 or AHT20 found");
+}
+
+void EnvironmentSensor::setTemperatureScale(bool setfahrenheit) {
+  isfahrenheit = setfahrenheit;
+}
+
+bool EnvironmentSensor::isFahrenheit() {
+  return isfahrenheit;
 }
 
 EnvironmentSensorData EnvironmentSensor::getData() {
@@ -13,6 +21,9 @@ EnvironmentSensorData EnvironmentSensor::getData() {
   aht.getEvent(&humidity, &temp);
   data.temperature = temp.temperature;
   data.humidity = humidity.relative_humidity;
+  if (isFahrenheit()) {
+    data.temperature = data.temperature * 9.0 / 5.0 + 32.0;
+  }
   return data;
 }
 

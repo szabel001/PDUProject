@@ -3,52 +3,23 @@
 
 class EditableField {
 public:
-    EditableField() {}
+    EditableField(){}
 
-    EditableField(const String& initialValue, const String& allowedChars)
-      : buffer(initialValue), allowed(allowedChars), cursorPos(0) {}
+    EditableField(int initialValue)
+      : buffer(initialValue) {}
 
-    void begin(const String& initialValue, const String& allowedChars) {
+    void begin(int initialValue) {
         buffer = initialValue;
-        allowed = allowedChars;
-        cursorPos = 0;
     }
 
-    bool moveRight() {
-        if (cursorPos < buffer.length() - 1) { cursorPos++; return true; }
-        return false;
-    }
+    void nextInt() { buffer++; }
 
-    bool moveLeft() {
-        if (cursorPos > 0) { cursorPos--; return true; }
-        return false;
-    }
+    void prevInt() { if (buffer > 0) buffer--; }
 
-    void nextChar() {
-        char c = buffer[cursorPos];
-        int idx = allowed.indexOf(c);
-        if (idx < 0) idx = 0;
-        idx = (idx + 1) % allowed.length();
-        buffer[cursorPos] = allowed[idx];
-    }
-
-    void prevChar() {
-        char c = buffer[cursorPos];
-        int idx = allowed.indexOf(c);
-        if (idx < 0) idx = 0;
-        idx = (idx - 1 + allowed.length()) % allowed.length();
-        buffer[cursorPos] = allowed[idx];
-    }
-
-    const String& get() const { return buffer; }
-    int getCursor() const { return cursorPos; }
+    String get() const { return String(buffer); }
 
 private:
-    String buffer;
-    String allowed;
-    String backButton = "BACK";
-    String confirmButton = "SAVE";
-    int cursorPos = 0;
+    int buffer;
 };
 
 #endif

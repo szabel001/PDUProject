@@ -25,9 +25,18 @@ class networkLayerManager {
   void configureWifiSSID(String ssid);
   void configureWifiPassword(String password);
   bool getWiFiAPStatus();
+  void configureWifiIP(uint8_t ip[]);
+  void configureWifiGateway(uint8_t gateway[]);
+  void configureWifiSubnet(uint8_t subnet[]);
+  void configureWifiDNS(uint8_t dns[]);
+  bool turnOnWifiAP(bool status);
   bool getWiFiSTAStatus();
   bool setfWifiSTA(bool status);
-  void configureWifiAP(uint8_t ip[], uint8_t gateway[], uint8_t subnet[], wifiMode mode);
+  void configureEthernet_IP(uint8_t ip[]);
+  void setEthernet_Gateway(uint8_t gateway[]);
+  void setEthernet_Subnet(uint8_t subnet[]);
+  void setEthernet_DNS(uint8_t dns[]);
+  void configureEthernet();
   void configureEthernet(uint8_t ip[], uint8_t gateway[], uint8_t subnet[]);
 
   bool getNetworkStatus();
@@ -46,19 +55,20 @@ class networkLayerManager {
 
   wifiMode _actualWifiMode;              // Wi-Fi mode - OFF, STA, AP
 
-  String _actWifiAP_SSID;                // Wi-Fi SSID. password -> when it is used as AP (client can be connected to this AP with these credentials)
-  String _actWifiAP_Password;            // belonding to the ESP's network
+  String _WifiAP_SSID;                // Wi-Fi SSID. password -> when it is used as AP (client can be connected to this AP with these credentials)
+  String _WifiAP_Password;            // belonding to the ESP's network
 
-  String _actWifiSTA_SSID;               // Wi-Fi SSID. password -> when it is used as STA (ESP can connect to a router with these credentials)
-  String _actWifiSTA_Password;           // external network's credentials
+  String _WifiSTA_SSID;               // Wi-Fi SSID. password -> when it is used as STA (ESP can connect to a router with these credentials)
+  String _WifiSTA_Password;           // external network's credentials
 
-  IPAddress _actWifiIP;
-  IPAddress _actWifiSubnet;
-  IPAddress _actWifiGateway;
+  IPAddress _WifiIP;
+  IPAddress _WifiSubnet;
+  IPAddress _WifiGateway;
 
-  IPAddress _actEthernetIP;
-  IPAddress _actEthernetSubnet;
-  IPAddress _actEthernetGateway;
+  IPAddress _EthernetIP;
+  IPAddress _EthernetSubnet;
+  IPAddress _EthernetGateway;
+  IPAddress _EthernetDNS;
 
   IPAddress _actMQTTBroker;
   uint8_t _actMQTTPort;

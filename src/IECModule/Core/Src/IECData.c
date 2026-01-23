@@ -6,11 +6,36 @@ enum IECStatus{
 	FAULT,
 };
 
+float adcToCurrent(int adc)
+{
+    const int adc0 = 2150;
+
+    // Negatív áram tükrözése
+    if (adc < adc0) {
+        int mirrored = 2 * adc0 - adc;
+        return -adcToCurrent(mirrored);
+    }
+
+    float x = adc - adc0;
+
+    // Másodfokú polinom
+    float current =
+        -2.17167128e-7f * x * x +
+         1.20380534e-2f * x +
+         3.33630450e-3f;
+
+    // Alsó korlát
+    if (current < 0.0f)
+        current = 0.0f;
+
+    return current;
+}
+
 void readCurrentData(ADC_HandleTypeDef* hadc){
   HAL_ADC_Start(hadc); // Poll ADC1 Perihperal & TimeOut = 1mSec
   HAL_ADC_PollForConversion(hadc, 1); // Read The ADC Conversion Result & Map It To PWM DutyCycle
   uint16_t ADCRaw = HAL_ADC_GetValue(hadc);
-  actualCurrent = ((float)(ADCRaw)/4096.0f)*3.3f;
+  actualCurrent = adcToCurrent(ADCRaw); //((float)(ADCRaw)/4096.0f)*3.3f;
   addFloatToRegister(Input_Registers_Database, RMS_CURRENT_START, actualCurrent);
 }
 

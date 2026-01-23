@@ -14,6 +14,7 @@ AsyncWebServer asyncServer(deafultHttpPort);
 networkLayerManager* networkLayer;
 PDU_webserver* webserver;
 TFTDisplay tftDisplay;
+EnvironmentSensor* envSensor;
 
 void setup() {
   Serial.begin(115200);
@@ -32,7 +33,9 @@ void setup() {
 
   globalIEC->setpowerDataUpdateCycleTime(1000); // Set the power data update cycle time to 1 second (1000 ms)
 
-  tftDisplay.setupDisplay(*globalIEC, *networkLayer); // Initialize the TFT display with the IEC control reference
+  envSensor = new EnvironmentSensor();
+
+  tftDisplay.setupDisplay(*globalIEC, *networkLayer, *envSensor); // Initialize the TFT display with the IEC control reference
 }
 
 uint32_t lastUpdate = 0;

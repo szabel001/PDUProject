@@ -13,9 +13,16 @@ struct EnvironmentSensorData {
 
 class EnvironmentSensor {
   public:
+    EnvironmentSensor();
     void setupEnvironmentSensor();
+    void setTemperatureScale(bool isFahrenheit);
+    bool isFahrenheit();
     EnvironmentSensorData getData();
     void setSamplingTime(uint16_t cycleTime);
-private:
+
+  private:
+    bool isfahrenheit = false;
+    Adafruit_AHTX0 aht;
+    sensors_event_t humidity, temp;
 };
 #endif
