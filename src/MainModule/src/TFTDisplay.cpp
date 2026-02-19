@@ -1,5 +1,3 @@
-// TFTDisplay.cpp (modular rewrite)
-
 #include "TFTDisplay.h"
 
 TFTDisplay* TFTDisplay::_instance = nullptr;
@@ -90,12 +88,12 @@ void TFTDisplay::setupMenu() {
   addMenuItem(settingsId, MenuItem("Measuring Settings", MenuActionType::NAVIGATE, measuringId));
   addMenuItem(measuringId, MenuItem("Temp. scale", MenuActionType::CALLBACK, -1, [this, measuringId](){ 
     _envSensor->setTemperatureScale(!(_envSensor->isFahrenheit()));
-    getMenuById(measuringId)->items[0].value = String((_envSensor->isFahrenheit()) ? (char)247 + "F" : (char)247 + "C");
+    getMenuById(measuringId)->items[0].value = String((_envSensor->isFahrenheit()) ?  "`F" :  "`C");
     drawMenuWindow();
-  }));getMenuById(measuringId)->items[0].value = String((_envSensor->isFahrenheit()) ? (char)247 + "F" : (char)247 + "C");
+  }));getMenuById(measuringId)->items[0].value = String((_envSensor->isFahrenheit()) ? "`F" : "`C");
 
   addMenuItem(measuringId, MenuItem("IEC meas. cycleTime [s]", MenuActionType::CALLBACK, -1, [this](){ 
-    startEditing(1, [this](const String& val) {
+    startEditing(_iec->getPowerDataUpdateCycleTime(), [this](const String& val) {
       uint16_t cycleTime = val.toInt();
       _iec->setpowerDataUpdateCycleTime(cycleTime);
     });
@@ -108,13 +106,13 @@ void TFTDisplay::setupMenu() {
   // PDU Status
   int pduStatusId = addMenu("PDU Status", mainId);
   addMenuItem(mainId, MenuItem("PDU Status", MenuActionType::NAVIGATE, pduStatusId));
-  addMenuItem(pduStatusId, MenuItem("Voltage (V):", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("Current (A):", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("Power (W):", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("Energy (kWh):", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("Overcurrent threshold (A)", MenuActionType::CALLBACK, -1, [this](){ /* set threshold */ }));
-  addMenuItem(pduStatusId, MenuItem("Current limit", MenuActionType::CALLBACK, -1, [this](){ /* set current limit */ }));
-  addMenuItem(pduStatusId, MenuItem("Firmware version", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("Voltage[V]:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("Current[A]:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("Power[W]:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("Energy[kWh]:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("OC threshold[A]", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("Current limit:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("Frw version:", MenuActionType::NONE));
 
   // AHT10
   int aht10Id = addMenu("AHT10 Sensor", mainId);
@@ -134,6 +132,7 @@ void TFTDisplay::setupMenu() {
 
   int iecSettingsId = addMenu("IEC Settings", iecMenuId);
   addMenuItem(iecMenuId, MenuItem("IEC Settings", MenuActionType::NAVIGATE, iecSettingsId));
+  addMenuItem(iecSettingsId, MenuItem("DUMMY:", MenuActionType::NONE));
 
   // Set starting menu to main
   currentMenuId = mainId;
@@ -149,18 +148,26 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
   addMenuItem(settingsMenuId, MenuItem("Wifi", MenuActionType::NAVIGATE, wifiId));
   addMenuItem(settingsMenuId, MenuItem("Ethernet", MenuActionType::NAVIGATE, ethId));
 
-  // Wifi items (editable later)
+  addMenuItem(wifiId, MenuItem("View WIFI config", MenuActionType::CALLBACK, -1,
+      [this]() {
+          String ip = readStringFromNVS(NVSKeys::WIFI_IP, "");
+          String gateway = readStringFromNVS(NVSKeys::WIFI_GATEWAY, "");
+          String subnet = readStringFromNVS(NVSKeys::WIFI_SUBNET, "");
+          String dns = readStringFromNVS(NVSKeys::WIFI_DNS, "");
+          drawDataViewScreen("WIFI Config", { "IP: " + ip, "Gateway: " + gateway, "Subnet: " + subnet, "DNS: " + dns });
+      }));
+
   addMenuItem(wifiId, MenuItem("View WiFi STA", MenuActionType::CALLBACK, -1,
       [this]() {
-          String ssid = readStringFromNVS("ssid_sta", "");
-          String password = readStringFromNVS("pwd_sta", "");
+          String ssid = readStringFromNVS(NVSKeys::WIFI_STA_SSID, "");
+          String password = readStringFromNVS(NVSKeys::WIFI_STA_PWD, "");
           drawDataViewScreen("WiFi STA SSID & Password", { "SSID: " + ssid, "Password: " + password });
       }));
 
   addMenuItem(wifiId, MenuItem("View WiFi AP", MenuActionType::CALLBACK, -1, 
           [this]() {
-          String ssid = readStringFromNVS("ssid_ap", "");
-          String password = readStringFromNVS("pwd_ap", "");
+          String ssid = readStringFromNVS(NVSKeys::WIFI_AP_SSID, "");
+          String password = readStringFromNVS(NVSKeys::WIFI_AP_PWD, "");
           drawDataViewScreen("WiFi AP SSID & Password", { "SSID: " + ssid, "Password: " + password });
       }));
 
@@ -170,10 +177,21 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
     drawMenuWindow();
   }));getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAPStatus() ? "[ON]" : "[OFF]";
 
-  // Ethernet items
-  addMenuItem(ethId, MenuItem("DHCP:", MenuActionType::CALLBACK, -1, [this](){ /* toggle DHCP */ }));
-  addMenuItem(ethId, MenuItem("IP:", MenuActionType::CALLBACK, -1,[this]() {}));
-  addMenuItem(ethId, MenuItem("Gateway:", MenuActionType::CALLBACK, -1, [this](){ /* set GW */ }));
+  // Ethernet items 
+  addMenuItem(ethId, MenuItem("DHCP status: ", MenuActionType::CALLBACK, -1, [this, ethId](){ 
+    _networkMgr->setEthernetDHCP(!_networkMgr->getEthernetDHCPStatus());
+    getMenuById(ethId)->items[0].value = _networkMgr->getEthernetDHCPStatus() ? "[ON]" : "[OFF]";
+    drawMenuWindow();
+  }));getMenuById(ethId)->items[0].value = _networkMgr->getEthernetDHCPStatus() ? "[ON]" : "[OFF]";
+
+  addMenuItem(ethId, MenuItem("View Ethernet config", MenuActionType::CALLBACK, -1,
+      [this]() {
+          String ip = readStringFromNVS(NVSKeys::ETHERNET_IP, "");
+          String gateway = readStringFromNVS(NVSKeys::ETHERNET_GATEWAY, "");
+          String subnet = readStringFromNVS(NVSKeys::ETHERNET_SUBNET, "");
+          String dns = readStringFromNVS(NVSKeys::ETHERNET_DNS, "");
+          drawDataViewScreen("Ethernet Config", { "IP: " + ip, "Gateway: " + gateway, "Subnet: " + subnet, "DNS: " + dns });
+      }));
 }
 
 void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr, EnvironmentSensor& envSensor) {
@@ -206,7 +224,7 @@ void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr, 
       std::vector<uint8_t> ids = _iec->getFoundIECIDs();
       if (ids.size() == 0) {
         menus[idx].items.clear();
-        menus[idx].items.push_back(MenuItem("No IEC modules have found!", MenuActionType::NONE));
+        menus[idx].items.push_back(MenuItem("No IEC modules found!", MenuActionType::NONE));
       } else {
           menus[idx].items.clear();
           for (size_t i = 0; i < ids.size(); ++i) {
@@ -217,11 +235,32 @@ void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr, 
             int _iecMenuId = -1; 
             for (auto &m : menus) if (String(m.title) == "IEC Module Menu") { _iecMenuId = m.id; break; }
             if (_iecMenuId >= 0) currentMenuId = _iecMenuId;
+            }));
             currentSelection = 0; 
             windowStart = 0; 
-            }));
           }
         }
+          addMenuItem(selectIecId, MenuItem("Refresh IEC modules", MenuActionType::CALLBACK, -1, [this, selectIecId](){
+            int idx = findMenuIndexById(selectIecId);
+            int iecMenuId = -1;
+            for (auto &m : menus) if (String(m.title) == "IEC Module Menu") iecMenuId = m.id;
+            menus[idx].items.clear();
+            selectedIECModuleID = -1;
+            _iec->discoverIECs();
+            std::vector<uint8_t> ids = _iec->getFoundIECIDs();
+            for (size_t i = 0; i < ids.size(); ++i) {
+              uint8_t moduleId = ids[i];
+              addMenuItem(selectIecId, MenuItem("IEC Module " + String(moduleId), MenuActionType::NAVIGATE, iecMenuId, [this, moduleId](){
+              selectedIECModuleID = moduleId;
+              updateIECDetailMenus(selectedIECModuleID);
+              int _iecMenuId = -1; 
+              for (auto &m : menus) if (String(m.title) == "IEC Module Menu") { _iecMenuId = m.id; break; }
+              if (_iecMenuId >= 0) currentMenuId = _iecMenuId;
+              }));
+              currentSelection = 0; 
+              windowStart = 0; 
+          }
+          }));
     }
   }
   drawMenuWindow();
@@ -283,11 +322,14 @@ void TFTDisplay::processButton() {
 
   if(ConfirmPressed){
     if (editing) {
-      editing = false;
       if (editorSaveCallback) {
         editorSaveCallback(editor.get());
       }
+      editorSaveCallback = nullptr;
+      editing = false;
+      drawSavedSuccessScreen();
       drawMenuWindow();
+      ConfirmPressed = false;
       return;
     }
 
@@ -296,7 +338,7 @@ void TFTDisplay::processButton() {
     if (currentSelection < 0 || currentSelection >= (int)menus[idx].items.size()) return;
     MenuItem &it = menus[idx].items[currentSelection];
 
-    if (it.actionType == MenuActionType::NAVIGATE) {
+    if (it.actionType == MenuActionType::NAVIGATE && !editing) {
       if (it.targetMenuId >= 0) {
         currentMenuId = it.targetMenuId;
         currentSelection = 0;
@@ -304,7 +346,7 @@ void TFTDisplay::processButton() {
         lastSelection = -1;
         if (it.cb) it.cb();  // callback can change currentMenuId} 
         drawMenuWindow();
-      } 
+      }
     } else if (it.actionType == MenuActionType::CALLBACK) {
       if (it.cb && !editing) it.cb();
     }
@@ -326,8 +368,13 @@ void TFTDisplay::updateIECDetailMenus(int id) {
       addMenuItem(m.id, MenuItem("Available LEDs:", MenuActionType::NONE)); m.items.back().value = String(_iec->getIEC_AVAILABLE_LEDS(id));
       addMenuItem(m.id, MenuItem("Current limit:", MenuActionType::NONE)); m.items.back().value = String(_iec->getIECCurrentLimit(id));
       addMenuItem(m.id, MenuItem("Relay count:", MenuActionType::NONE)); m.items.back().value = String(_iec->getIECRelayCount(id));
-      addMenuItem(m.id, MenuItem("Current measured:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_CURRENT_MEASURED(id) ? "YES" : "NO";
-      addMenuItem(m.id, MenuItem("Voltage measured:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_VOLTAGE_MEASURED(id) ? "YES" : "NO";
+      addMenuItem(m.id, MenuItem("A measured:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_RMS_CURRENT_MEASURED(id) ? "YES" : "NO";
+      addMenuItem(m.id, MenuItem("V measured:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_RMS_VOLTAGE_MEASURED(id) ? "YES" : "NO";
+      addMenuItem(m.id, MenuItem("Act. P meas.:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_ACTIVE_POWER_MEASURED(id) ? "YES" : "NO";
+      addMenuItem(m.id, MenuItem("React. P meas.:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_REACTIVE_POWER_MEASURED(id) ? "YES" : "NO";
+      addMenuItem(m.id, MenuItem("App. P meas.:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_APPARENT_POWER_MEASURED(id) ? "YES" : "NO";
+      addMenuItem(m.id, MenuItem("P Factor meas.:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_POWER_FACTOR_MEASURED(id) ? "YES" : "NO";
+      addMenuItem(m.id, MenuItem("Freq. meas.:", MenuActionType::NONE)); m.items.back().value = _iec->getIEC_IS_AC_FREQUENCY_MEASURED(id) ? "YES" : "NO";
     }
 
     if (String(m.title) == "IEC Status") {
@@ -438,11 +485,21 @@ void TFTDisplay::updateMenuValues() {
     if (String(m.title) == "AHT10 Sensor") {
       if (m.items.size() >= 2) {
         // stub: replace with real aht10 calls
-        m.items[0].value = "--" + String(( _envSensor->isFahrenheit()) ? (char)247 + "F" : (char)247 + "C");
+        m.items[0].value = "--" + String(( _envSensor->isFahrenheit()) ? "`F" : "`C");
         m.items[1].value = "-- %";
       }
     }
   }
+}
+
+void TFTDisplay::drawSavedSuccessScreen() {
+  _tft.fillScreen(TFT_BLACK);
+  _tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  _tft.setTextFont(2);
+  _tft.drawString("Value saved!", 60, 50);
+  _tft.setTextFont(1);
+  delay(1000);
+  drawMenuWindow();
 }
 
 void TFTDisplay::updateCursor() {

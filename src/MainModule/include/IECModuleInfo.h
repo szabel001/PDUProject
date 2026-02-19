@@ -8,6 +8,11 @@
 #define MAX_SLAVES 50
 #define MODBUS_BAUD 115200
 
+#define NUM_INPUT_REGISTERS 256
+#define NUM_HOLDING_REGISTERS 256
+#define NUM_COILS 256
+#define NUM_DISCRETEINPUTS 256
+
 enum ledStates {                //collect which type of LEDs are available on the IEC module:
   noSupport = 0,  // none
   R = 1,          // only a red

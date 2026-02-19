@@ -12,14 +12,39 @@
 
 class PDUModuleInfo {
   public:    
-  uint64_t ID;  // 48 bit MAC addr
-  uint8_t version;
-
-  bool isWifiActive;  // Wi-Fi is currently active
-  bool isEthernetActive; // Ethernet is currently active
-  bool isAHT10Active; // AHT10 is connected and sending valid data
-
   uint64_t getID();    // set the capabilities of the IEC module
   void setID(uint16_t _id);    // set the capabilities of the IEC module
+
+  String getHWVersion();    
+  void setHWVersion(String hwversion);  
+
+  String getSWVersion();    
+  void setSWVersion(String swversion);  
+
+  float getCurrentData();    
+  void setCurrentData(float currentData);   
+
+  float getVoltageData(); 
+  void setVoltageData(float voltageData); 
+
+  float getPowerData();
+  void setPowerData(float powerData); 
+
+  float getEnergyData();   
+  void setEnergyData(float energyData);    
+
+  uint16_t getOvercurrThreshold();  
+  void setOvercurrThreshold(uint16_t overcurrThreshold); 
+
+  private:
+    uint16_t _id;
+    String _hwversion;
+    String _swVersion;
+
+    float _currentData;
+    float _voltageData;
+    float _powerData;
+    float _energyData;
+    uint16_t _overcurrThreshold;
 };
 #endif

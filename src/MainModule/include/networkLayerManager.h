@@ -32,6 +32,9 @@ class networkLayerManager {
   bool turnOnWifiAP(bool status);
   bool getWiFiSTAStatus();
   bool setfWifiSTA(bool status);
+  String getEthernetIP();
+  void setEthernetDHCP(bool status);
+  bool getEthernetDHCPStatus();
   void configureEthernet_IP(uint8_t ip[]);
   void setEthernet_Gateway(uint8_t gateway[]);
   void setEthernet_Subnet(uint8_t subnet[]);

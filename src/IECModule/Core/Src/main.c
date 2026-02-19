@@ -73,7 +73,6 @@ uint8_t prevCustCurrErrorLimit;
 
 float actualCurrent;
 
-
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
 	if (RxData[0] == MODBUS_ID)
@@ -150,23 +149,29 @@ int main(void)
   HAL_GPIO_WritePin(RED_LED_GPIO_Port, RED_LED_Pin, GPIO_PIN_RESET);
   prevRelayState = 0;
   HAL_GPIO_WritePin(RELAY_CTRL_GPIO_Port, RELAY_CTRL_Pin, prevRelayState);
-  Coils_Database[RELAY_STATE_START] = prevRelayState;
+  Coils_Database[RELAY_STATE_ADDR] = prevRelayState;
 
-  Coils_Database[IS_VOLTAGE_MEASURED_START] = Config_Params->IS_CURRENT_MEASURED;
-  Coils_Database[IS_CURRENT_MEASURED_START] = Config_Params->IS_VOLTAGE_MEASURED;
+  Coils_Database[IS_RMS_VOLTAGE_MEASURED_ADDR] = Config_Params->IS_RMS_VOLTAGE_MEASURED;
+  Coils_Database[IS_RMS_CURRENT_MEASURED_ADDR] = Config_Params->IS_RMS_CURRENT_MEASURED;
 
-  Input_Registers_Database[ID_START] = Config_Params->ID;
-  Input_Registers_Database[VERSION_START] = Config_Params->VERSION;
-  Input_Registers_Database[AVAILABLE_LEDS_START] = Config_Params->AVAILABLE_LEDS;
+  Coils_Database[IS_ACTIVE_POWER_MEASURED_ADDR] = Config_Params->IS_ACTIVE_POWER_MEASURED;
+  Coils_Database[IS_REACTIVE_POWER_MEASURED_ADDR] = Config_Params->IS_REACTIVE_POWER_MEASURED;
+  Coils_Database[IS_APPARENT_POWER_MEASURED_ADDR] = Config_Params->IS_APPARENT_POWER_MEASURED;
+  Coils_Database[IS_POWER_FACTOR_MEASURED_ADDR] = Config_Params->IS_POWER_FACTOR_MEASURED;
+  Coils_Database[IS_AC_FREQUENCY_MEASURED_ADDR] = Config_Params->IS_AC_FREQUENCY_MEASURED;
 
-  Input_Registers_Database[CURRENT_LIMIT_START] = Config_Params->CURRENT_LIMIT;
-  Input_Registers_Database[CUSTCURR_WARNING_LIMIT_START] = Config_Params->CURRENT_LIMIT;
-  Input_Registers_Database[CUSTCURR_ERROR_LIMIT_START] = Config_Params->CURRENT_LIMIT;
+  Input_Registers_Database[ID_ADDR] = Config_Params->ID;
+  Input_Registers_Database[VERSION_ADDR] = Config_Params->VERSION;
+  Input_Registers_Database[AVAILABLE_LEDS_ADDR] = Config_Params->AVAILABLE_LEDS;
+
+  Input_Registers_Database[CURRENT_LIMIT_ADDR] = Config_Params->CURRENT_LIMIT;
+  Input_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR] = Config_Params->CURRENT_LIMIT * 0.8;
   prevCustCurrWarningLimit = Config_Params->CURRENT_LIMIT;
-  prevCustCurrErrorLimit = Config_Params->CURRENT_LIMIT;
-  float valami = Config_Params->CURRENT_LIMIT;
-  Input_Registers_Database[RELAY_COUNT_START] = Config_Params->RELAY_COUNT;
+  prevCustCurrErrorLimit = Config_Params->CURRENT_LIMIT * 0.8;
+  Input_Registers_Database[RELAY_COUNT_ADDR] = Config_Params->RELAY_COUNT;
   MODBUS_ID = Config_Params->MODBUS_ID;
+
+  Holding_Registers_Database[MEAS_AVG_NUM_ADDR] = 10;
 
   /* USER CODE END 2 */
 

@@ -41,7 +41,7 @@ void IECControl::IECSetup() {
 
 void IECControl::IECReadLoop() {
   unsigned long _currentMillis_powerRead = millis();
-  if (_currentMillis_powerRead - _startMillis_powerRead >= powerDataUpdateCycleTime) {
+  if (_currentMillis_powerRead - _startMillis_powerRead >= (powerDataUpdateCycleTime * 1000)) {
     _updateMeasurement();
     _startMillis_powerRead = _currentMillis_powerRead;
   }
@@ -49,7 +49,7 @@ void IECControl::IECReadLoop() {
 
 void IECControl::collectIECModuleInfos() {
   _iecModules.erase(_iecModules.begin(), _iecModules.end());
-  std::vector<uint8_t> foundIDs = _discoverIECs();
+  std::vector<uint8_t> foundIDs = discoverIECs();
   for (uint8_t id : foundIDs) {
     IECModuleInfo module;
     module.id = id;
@@ -98,6 +98,10 @@ bool IECControl::setCurrWarningLimit(uint8_t id, float level)
     }
 }
 
+uint16_t IECControl::getPowerDataUpdateCycleTime() {
+  return powerDataUpdateCycleTime;
+}
+
 void IECControl::setpowerDataUpdateCycleTime(uint16_t cycleTime) {
   powerDataUpdateCycleTime = cycleTime;
 }
@@ -122,83 +126,67 @@ MeasurementData IECControl::getMeasurementData(uint8_t id) {
 
 uint16_t IECControl::getIECID(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, ID_START);
+    return _getIntDataFromInputRegister(id, ID_ADDR);
 }
 
 uint16_t IECControl::getIECVersion(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, VERSION_START);
+    return _getIntDataFromInputRegister(id, VERSION_ADDR);
 }
 
 uint16_t IECControl::getIECRelayCount(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, RELAY_COUNT_START);
+    return _getIntDataFromInputRegister(id, RELAY_COUNT_ADDR);
 }
 
 uint16_t IECControl::getIECCurrentLimit(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, CURRENT_LIMIT_START);
+    return _getIntDataFromInputRegister(id, CURRENT_LIMIT_ADDR);
 }
-
-uint16_t IECControl::getIEC_IS_VOLTAGE_MEASURED(uint8_t id)
-{
-    return _getIntDataFromInputRegister(id, IS_CURRENT_MEASURED_START);
-}
-
-uint16_t IECControl::getIEC_IS_CURRENT_MEASURED(uint8_t id)
-{
-    return _getIntDataFromInputRegister(id, IS_CURRENT_MEASURED_START);
-}
-
 
 uint16_t IECControl::getIEC_IS_RMS_VOLTAGE_MEASURED(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, IS_RMS_VOLTAGE_MEASURED_START);
+    return _getIntDataFromInputRegister(id, IS_RMS_VOLTAGE_MEASURED_ADDR);
 }
 uint16_t IECControl::getIEC_IS_RMS_CURRENT_MEASURED(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, IS_RMS_CURRENT_MEASURED_START);
+    return _getIntDataFromInputRegister(id, IS_RMS_CURRENT_MEASURED_ADDR);
 }
 uint16_t IECControl::getIEC_IS_ACTIVE_POWER_MEASURED(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, IS_ACTIVE_POWER_MEASURED_START);
+    return _getIntDataFromInputRegister(id, IS_ACTIVE_POWER_MEASURED_ADDR);
 }
 uint16_t IECControl::getIEC_IS_REACTIVE_POWER_MEASURED(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, IS_REACTIVE_POWER_MEASURED_START);
+    return _getIntDataFromInputRegister(id, IS_REACTIVE_POWER_MEASURED_ADDR);
 }
 uint16_t IECControl::getIEC_IS_APPARENT_POWER_MEASURED(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, IS_APPARENT_POWER_MEASURED_START);
+    return _getIntDataFromInputRegister(id, IS_APPARENT_POWER_MEASURED_ADDR);
 }
 uint16_t IECControl::getIEC_IS_POWER_FACTOR_MEASURED(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, IS_POWER_FACTOR_MEASURED_START);
+    return _getIntDataFromInputRegister(id, IS_POWER_FACTOR_MEASURED_ADDR);
 }
 uint16_t IECControl::getIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, IS_AC_FREQUENCY_MEASURED_START);
+    return _getIntDataFromInputRegister(id, IS_AC_FREQUENCY_MEASURED_ADDR);
 }
 
 uint16_t IECControl::getIEC_AVAILABLE_LEDS(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, AVAILABLE_LEDS_START);
+    return _getIntDataFromInputRegister(id, AVAILABLE_LEDS_ADDR);
 }
 
 
 uint16_t IECControl::getIECRelayStatus(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, RELAY_STATE_START);
+    return _getIntDataFromInputRegister(id, RELAY_STATE_ADDR);
 }
 
 float IECControl::getCurrWarningLimit(uint8_t id)
 {
-    return _getFloatDataFromInputRegister(id, CUSTCURR_WARNING_LIMIT_START);
-}
-
-float IECControl::getCurrErrorLimit(uint8_t id)
-{
-    return _getFloatDataFromInputRegister(id, CUSTCURR_ERROR_LIMIT_START);
+    return _getFloatDataFromInputRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
 }
 
 bool IECControl::getRelayStatus(uint8_t id) {
@@ -206,28 +194,28 @@ bool IECControl::getRelayStatus(uint8_t id) {
 }
 
 uint16_t IECControl::getIECStatus(uint8_t id) {
-  uint16_t status = _getIntDataFromInputRegister(id, IEC_STATUS_START);
+  uint16_t status = _getIntDataFromInputRegister(id, IEC_STATUS_ADDR);
   return status;
 }
 
 float IECControl::getCurrentData(uint8_t id) {
-  return _getFloatDataFromInputRegister(id, RMS_CURRENT_START);
+  return _getFloatDataFromInputRegister(id, RMS_CURRENT_ADDR);
 }
 
 float IECControl::getVoltageData(uint8_t id) {
-  return _getFloatDataFromInputRegister(id, RMS_VOLTAGE_START);
+  return _getFloatDataFromInputRegister(id, RMS_VOLTAGE_ADDR);
 }
 
 float IECControl::getPowerData(uint8_t id) {
-  return _getFloatDataFromInputRegister(id, APPARENT_POWER_START);
+  return _getFloatDataFromInputRegister(id, APPARENT_POWER_ADDR);
 }
 
 float IECControl::getFrequencyData(uint8_t id) {
-  return _getFloatDataFromInputRegister(id, AC_FREQUENCY_START);
+  return _getFloatDataFromInputRegister(id, AC_FREQUENCY_ADDR);
 }
 
 float IECControl::getPowerFactorData(uint8_t id) {
-  return _getFloatDataFromInputRegister(id, POWER_FACTOR_START);
+  return _getFloatDataFromInputRegister(id, POWER_FACTOR_ADDR);
 }
 
 //==========================================================//
@@ -259,7 +247,7 @@ uint16_t IECControl::_getIntDataFromInputRegister(uint8_t id, uint16_t startOfDa
   return _iecModules[id].inputRegisters[startOfData];
 }
 
-std::vector<uint8_t> IECControl::_discoverIECs() {
+std::vector<uint8_t> IECControl::discoverIECs() {
   _foundIECIDs.clear();
   std::vector<uint8_t> slaveIDs;
   for (uint8_t i = 1; i <= 50; i++) {
@@ -284,7 +272,7 @@ std::vector<uint8_t> IECControl::_discoverIECs() {
 
 bool IECControl::_isIECCommunicate(uint8_t id) { // Check if the given slave ID is communicating
   uint16_t buffer[1];
-  ModbusRTUMasterError _error = _mbMaster.readInputRegisters(id, ID_START, buffer, 1);
+  ModbusRTUMasterError _error = _mbMaster.readInputRegisters(id, ID_ADDR, buffer, 1);
     #ifdef DEBUG
       _debugString = "ID: " + String(id) + " " + errorStrings[_error];
       Serial.println(_debugString);
@@ -305,12 +293,15 @@ bool IECControl::_updateMeasurement() { // Update the measurement data for all d
 }
 
 bool IECControl::_updateMeasurement(uint8_t id) { // Update the measurement data for a specific IEC module
-  _readIECFloatInputRegister(id, RMS_CURRENT_START);
-  _readIECFloatInputRegister(id, RMS_VOLTAGE_START);
-  _readIECFloatInputRegister(id, APPARENT_POWER_START);
-  _readIECFloatInputRegister(id, AC_FREQUENCY_START);
-  _readIECFloatInputRegister(id, POWER_FACTOR_START);
-  return true;
+  _read_RMS_CURRENT(id);
+  _read_RMS_VOLTAGE(id);
+  _read_ACTIVE_POWER(id);
+  _read_REACTIVE_POWER(id);
+  _read_APPARENT_POWER(id);
+  _read_POWER_FACTOR(id);
+  _read_AC_FREQUENCY(id);
+  _readIECStatus(id);
+  return true; // TODO need give funtcionality to check if all readings were successful
 }
 
 void IECControl::_readIECCapabilities(uint8_t id) {
@@ -318,19 +309,24 @@ void IECControl::_readIECCapabilities(uint8_t id) {
   _readIECVersion(id);
   _readIECRelayCount(id);
   _readIECCurrentLimit(id);
-  _readIECMeasureVoltageCount(id);
-  _readIECMeasureCurrentCount(id);
   _readIECAvailableLEDs(id);
+  _readIEC_IS_RMS_VOLTAGE_MEASURED(id);
+  _readIEC_IS_RMS_CURRENT_MEASURED(id);
+  _readIEC_IS_ACTIVE_POWER_MEASURED(id);
+  _readIEC_IS_REACTIVE_POWER_MEASURED(id);
+  _readIEC_IS_APPARENT_POWER_MEASURED(id);
+  _readIEC_IS_POWER_FACTOR_MEASURED(id);
+  _readIEC_IS_AC_FREQUENCY_MEASURED(id);
 }
 
 void IECControl::_readIECStatus(uint8_t id) { //TODO shall be implemented in the future as real status reading, return an IECStatus enum
-  _readIECUINT16InputRegister(id, IEC_STATUS_START);
+  _readIECUINT16InputRegister(id, IEC_STATUS_ADDR);
   _readRelayStatus(id);
 }
 
 void IECControl::_readRelayStatus(uint8_t id) {
-    bool buffer[RELAY_STATE_LENGTH];
-    ModbusRTUMasterError _error = _mbMaster.readCoils(id, RELAY_STATE_START, buffer, RELAY_STATE_LENGTH);
+    bool buffer[1];
+    ModbusRTUMasterError _error = _mbMaster.readCoils(id, RELAY_STATE_ADDR, buffer, 1);
     if (_error != MODBUS_RTU_MASTER_SUCCESS)
     {
 #ifdef DEBUG
@@ -338,28 +334,37 @@ void IECControl::_readRelayStatus(uint8_t id) {
         Serial.println(_debugString);
 #endif
     }
-    else _iecModules[id].inputRegisters[RELAY_STATE_START] = buffer[0];
+    else _iecModules[id].inputRegisters[RELAY_STATE_ADDR] = buffer[0];
 }
 
-void IECControl::_readCurrentData(uint8_t id) {
-  _readIECFloatInputRegister(id, RMS_CURRENT_START);
+void IECControl::_read_RMS_VOLTAGE(uint8_t id) {
+  _readIECFloatInputRegister(id, RMS_VOLTAGE_ADDR);
 }
 
-void IECControl::_readVoltageData(uint8_t id) {
-  _readIECFloatInputRegister(id, RMS_VOLTAGE_START);
+void IECControl::_read_RMS_CURRENT(uint8_t id) {
+  _readIECFloatInputRegister(id, RMS_CURRENT_ADDR);
 }
 
-void IECControl::_readPowerData(uint8_t id) {
-  _readIECFloatInputRegister(id, APPARENT_POWER_START);
+void IECControl::_read_ACTIVE_POWER(uint8_t id){
+  _readIECFloatInputRegister(id, ACTIVE_POWER_ADDR);
 }
 
-void IECControl::_readFrequencyData(uint8_t id){
-  _readIECFloatInputRegister(id, AC_FREQUENCY_START);
+void IECControl::_read_REACTIVE_POWER(uint8_t id){
+  _readIECFloatInputRegister(id, REACTIVE_POWER_ADDR);
 }
 
-void IECControl::_readPowerFactorData(uint8_t id){
-  _readIECFloatInputRegister(id, POWER_FACTOR_START);
+void IECControl::_read_APPARENT_POWER(uint8_t id) {
+  _readIECFloatInputRegister(id, APPARENT_POWER_ADDR);
 }
+
+void IECControl::_read_POWER_FACTOR(uint8_t id){
+  _readIECFloatInputRegister(id, POWER_FACTOR_ADDR);
+}
+
+void IECControl::_read_AC_FREQUENCY(uint8_t id){
+  _readIECFloatInputRegister(id, AC_FREQUENCY_ADDR);
+}
+
 
 void IECControl::_readIECFloatInputRegister(uint16_t id, uint16_t startOfData) { //Read float data from IEC module and stores it to the IEC's input register array
   uint16_t buffer[2];
@@ -392,64 +397,82 @@ void IECControl::_readIECUINT16InputRegister(uint16_t id, uint16_t startOfData) 
   }
 }
 
+void IECControl::_readIECCoil(uint8_t id, uint16_t startOfData) { //Read coil data from IEC module and stores it to the IEC's input register array
+  bool buffer[1];
+  ModbusRTUMasterError _error = _mbMaster.readCoils(id, startOfData, buffer, 1);
+
+  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
+    #ifdef DEBUG
+      _debugString = "ID: " + String(id) + " " + errorStrings[_error];
+      Serial.println(_debugString);
+    #endif
+  }
+  else {
+    _iecModules[id].coils[startOfData] = buffer[0];
+  }
+}
+
 void IECControl::_readID(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECUINT16InputRegister(id, ID_START);
+  _readIECUINT16InputRegister(id, ID_ADDR);
 }
 
 void IECControl::_readIECVersion(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECUINT16InputRegister(id, VERSION_START);
+  _readIECUINT16InputRegister(id, VERSION_ADDR);
 }
 
 void IECControl::_readIECRelayCount(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECUINT16InputRegister(id, RELAY_COUNT_START);
+  _readIECUINT16InputRegister(id, RELAY_COUNT_ADDR);
 }
 
 void IECControl::_readIECCurrentLimit(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECUINT16InputRegister(id, CURRENT_LIMIT_START);
-}
-
-void IECControl::_readIECMeasureVoltageCount(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECUINT16InputRegister(id, IS_VOLTAGE_MEASURED_START);
-}
-
-void IECControl::_readIECMeasureCurrentCount(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECUINT16InputRegister(id, IS_CURRENT_MEASURED_START);
+  _readIECUINT16InputRegister(id, CURRENT_LIMIT_ADDR);
 }
 
 void IECControl::_readIECAvailableLEDs(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECUINT16InputRegister(id, AVAILABLE_LEDS_START);
+  _readIECUINT16InputRegister(id, AVAILABLE_LEDS_ADDR);
+}
+
+void IECControl::_readIEC_IS_RMS_VOLTAGE_MEASURED(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECCoil(id, IS_RMS_VOLTAGE_MEASURED_ADDR);
+}
+
+void IECControl::_readIEC_IS_RMS_CURRENT_MEASURED(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECCoil(id, IS_RMS_CURRENT_MEASURED_ADDR);
+}
+
+void IECControl::_readIEC_IS_ACTIVE_POWER_MEASURED(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECCoil(id, IS_ACTIVE_POWER_MEASURED_ADDR);
+}
+
+void IECControl::_readIEC_IS_REACTIVE_POWER_MEASURED(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECCoil(id, IS_REACTIVE_POWER_MEASURED_ADDR);
+}
+
+void IECControl::_readIEC_IS_APPARENT_POWER_MEASURED(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECCoil(id, IS_APPARENT_POWER_MEASURED_ADDR);
+}
+
+void IECControl::_readIEC_IS_POWER_FACTOR_MEASURED(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECCoil(id, IS_POWER_FACTOR_MEASURED_ADDR);
+}
+
+void IECControl::_readIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECCoil(id, IS_AC_FREQUENCY_MEASURED_ADDR);
 }
 
 void IECControl::_readCustCurrWarningLimit(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECFloatInputRegister(id, CUSTCURR_WARNING_LIMIT_START);
-}
-
-void IECControl::_readCustCurrErrorLimit(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECFloatInputRegister(id, CUSTCURR_ERROR_LIMIT_START);
+  _readIECFloatInputRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
 }
 
 void IECControl::_writeCustCurrWarningLimit(uint8_t id, float value) { //Read the relay status from the given slave ID over
   uint16_t buffer[2];
   floatToIEEE754Registers(value, buffer);
-  ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, CUSTCURR_WARNING_LIMIT_START, buffer, CUSTCURR_WARNING_LIMIT_LENGTH);
+  ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, CUSTCURR_WARNING_LIMIT_ADDR, buffer, 2);
   if (_error != MODBUS_RTU_MASTER_SUCCESS) {
     #ifdef DEBUG
       _debugString = "ID: " + String(id) + " " + errorStrings[_error];
       Serial.println(_debugString);
     #endif
     _readCustCurrWarningLimit(id);
-  }
-}
-
-void IECControl::_writeCustCurrErrorLimit(uint8_t id, float value) { //Read the relay status from the given slave ID over
-  uint16_t buffer[2];
-  floatToIEEE754Registers(value, buffer);
-  ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, CUSTCURR_ERROR_LIMIT_START, buffer, CUSTCURR_ERROR_LIMIT_LENGTH);
-  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
-    #ifdef DEBUG
-      _debugString = "ID: " + String(id) + " " + errorStrings[_error];
-      Serial.println(_debugString);
-    #endif
-    _readCustCurrErrorLimit(id);
   }
 }

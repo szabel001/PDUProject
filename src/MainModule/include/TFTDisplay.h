@@ -53,9 +53,10 @@ public:
   void updateDynamicValues();
   void drawMenuWindow();
   void updateMenuValues();
+  void drawSavedSuccessScreen();
   void updateCursor();
 
-private:
+  private:
   std::vector<Menu> menus;
   int addMenu(const char* title,int parentId=-1);
   void addMenuItem(int menuId,const MenuItem& item);

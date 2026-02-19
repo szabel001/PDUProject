@@ -1,5 +1,6 @@
 #include "IECData.h"
 
+
 enum IECStatus{
 	STANDBY,
 	NORMAL,
@@ -32,37 +33,46 @@ float adcToCurrent(int adc)
 }
 
 void readCurrentData(ADC_HandleTypeDef* hadc){
-  HAL_ADC_Start(hadc); // Poll ADC1 Perihperal & TimeOut = 1mSec
+  HAL_ADC_Stop(hadc); // Poll ADC1 Perihperal & TimeOut = 1mSec
   HAL_ADC_PollForConversion(hadc, 1); // Read The ADC Conversion Result & Map It To PWM DutyCycle
   uint16_t ADCRaw = HAL_ADC_GetValue(hadc);
-  actualCurrent = adcToCurrent(ADCRaw); //((float)(ADCRaw)/4096.0f)*3.3f;
-  addFloatToRegister(Input_Registers_Database, RMS_CURRENT_START, actualCurrent);
+  actualCurrent = 0;
+  for(int i = 0; i < Holding_Registers_Database[MEAS_AVG_NUM_ADDR]; i++){
+	  actualCurrent += adcToCurrent(ADCRaw);
+  }
+  actualCurrent = actualCurrent / Holding_Registers_Database[MEAS_AVG_NUM_ADDR];
+  addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, actualCurrent);
 }
 
 void readVoltageData(){
 	float voltageVal = 230.0f;
-	addFloatToRegister(Input_Registers_Database, RMS_VOLTAGE_START, voltageVal);
+	addFloatToRegister(Input_Registers_Database, RMS_VOLTAGE_ADDR, voltageVal);
 }
 
 void readPowerData(ADC_HandleTypeDef* hadc){
 	readCurrentData(hadc);
 	readVoltageData();
-	uint32_t currHex = (Input_Registers_Database[RMS_CURRENT_START] << 16) + Input_Registers_Database[RMS_CURRENT_START+1];
-	uint32_t voltHex = (Input_Registers_Database[RMS_VOLTAGE_START] << 16) + Input_Registers_Database[RMS_VOLTAGE_START+1];
+	uint32_t currHex = (Input_Registers_Database[RMS_CURRENT_ADDR] << 16) + Input_Registers_Database[RMS_CURRENT_ADDR+1];
+	uint32_t voltHex = (Input_Registers_Database[RMS_VOLTAGE_ADDR] << 16) + Input_Registers_Database[RMS_VOLTAGE_ADDR+1];
 	float powerData = convertIEEE754ToFloat(currHex) * convertIEEE754ToFloat(voltHex);
-	addFloatToRegister(Input_Registers_Database, APPARENT_POWER_START, powerData);
+	addFloatToRegister(Input_Registers_Database, APPARENT_POWER_ADDR, powerData);
 }
 
 uint8_t setRelayStatus(uint8_t prevRelayState){
-	if(prevRelayState != Coils_Database[RELAY_STATE_START]) {
-		HAL_GPIO_WritePin(RELAY_CTRL_GPIO_Port, RELAY_CTRL_Pin, Coils_Database[RELAY_STATE_START]);
-		return Coils_Database[RELAY_STATE_START];
+	if(prevRelayState != Coils_Database[RELAY_STATE_ADDR]) {
+		HAL_GPIO_WritePin(RELAY_CTRL_GPIO_Port, RELAY_CTRL_Pin, Coils_Database[RELAY_STATE_ADDR]);
+		setRelayStatusLed(Coils_Database[RELAY_STATE_ADDR]);
+		return Coils_Database[RELAY_STATE_ADDR];
 	}
 	return prevRelayState;
 }
 
 void setStatus(uint8_t status){
-	Input_Registers_Database[IEC_STATUS_START] = status;
+	Input_Registers_Database[IEC_STATUS_ADDR] = status;
+}
+
+void setRelayStatusLed(uint8_t status){
+	HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, status);
 }
 
 void addFloatToRegister(uint16_t *reg, uint8_t dataStart, float addedFloat){

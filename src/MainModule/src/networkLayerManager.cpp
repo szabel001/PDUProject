@@ -4,16 +4,46 @@
   #error This code is designed for (ESP32 + W5500) to run on ESP32 platform! Please check your Tools->Board setting.
 #endif
 
+String convertIPAddressToString(IPAddress ip) {
+  return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]);
+}
+
+IPAddress convertStringToIPAddress(const String& str) {
+  IPAddress ip;
+  ip.fromString(str);
+  return ip;
+}
+
+void ensureNVSString(const char* key, const String& value) {
+  if (readStringFromNVS(key, "").isEmpty()) {
+    writeStringToNVS(key, value);
+  }
+}
+
 void networkLayerManager::initInternetProtocol() {  
   _WifiAP_SSID = "PDUMain-AP"; // default AP SSID
-  if (readStringFromNVS("ssid_ap", "") == "") writeStringToNVS("ssid_ap", _WifiAP_SSID);
+  ensureNVSString(NVSKeys::WIFI_AP_SSID, _WifiAP_SSID);
   _WifiAP_Password = "12345678"; // default AP password
-  if (readStringFromNVS("pwd_ap", "") == "") writeStringToNVS("pwd_ap", _WifiAP_Password);
+  ensureNVSString(NVSKeys::WIFI_AP_PWD, _WifiAP_Password);
+
+  _WifiSTA_SSID = readStringFromNVS(NVSKeys::WIFI_STA_SSID, "");       // default STA SSID
+  _WifiSTA_Password = readStringFromNVS(NVSKeys::WIFI_STA_PWD, "");   // default STA password
+
+  _WifiIP = IPAddress(192, 168, 4, 1);
+  ensureNVSString(NVSKeys::WIFI_IP, convertIPAddressToString(_WifiIP));
+  _WifiGateway = IPAddress(192, 168, 4, 1);
+  ensureNVSString(NVSKeys::WIFI_GATEWAY, convertIPAddressToString(_WifiGateway));
+  _WifiSubnet = IPAddress(255, 255, 255, 0);
+  ensureNVSString(NVSKeys::WIFI_SUBNET, convertIPAddressToString(_WifiSubnet));
 
   _EthernetIP = IPAddress(192, 168, 0, 5);
+  ensureNVSString(NVSKeys::ETHERNET_IP, convertIPAddressToString(_EthernetIP));
   _EthernetGateway = IPAddress(192, 168, 0, 1);
+  ensureNVSString(NVSKeys::ETHERNET_GATEWAY, convertIPAddressToString(_EthernetGateway));
   _EthernetSubnet = IPAddress(255, 255, 255, 0);
+  ensureNVSString(NVSKeys::ETHERNET_SUBNET, convertIPAddressToString(_EthernetSubnet));
   _EthernetDNS = IPAddress(8, 8, 8, 8);
+  ensureNVSString(NVSKeys::ETHERNET_DNS, convertIPAddressToString(_EthernetDNS));
 
   byte mac[] = {0x4C, 0x75, 0x25, 0xE4, 0xA0, 0x3F}; // TODO: use a random MAC address generator or the MAC address of the ESP32
 
@@ -23,7 +53,7 @@ void networkLayerManager::initInternetProtocol() {
   #endif
 
   ESP32_W5500_onEvent();
-  if (ETH.begin(ETH_MISO, ETH_MOSI, ETH_SCK, ETH_CS, ETH_INTn, ETH_SPI_FREQ, SPI2_HOST, mac)) { //SPI must be SPI2_HOST ()
+  if (ETH.begin(ETH_MISO, ETH_MOSI, ETH_SCK, ETH_CS, ETH_INTn, ETH_SPI_FREQ, SPI2_HOST, mac)) {
     ETH.config(_EthernetIP, _EthernetGateway, _EthernetSubnet);
 
     delay(100);
@@ -37,6 +67,7 @@ void networkLayerManager::initInternetProtocol() {
       Serial.println("Ethernet shield was not found or cable is not connected.");
     }
   #endif
+  WiFiAPStatus = false;
   WiFiSTAStatus = false;
   WiFi.mode(WIFI_OFF); // Disable Wi-Fi to start with
 }
@@ -162,6 +193,23 @@ bool networkLayerManager::setfWifiSTA(bool status) {
 ///----------------------------------------------------------------------------------------------
 ///------------------------------- Ethernet configuration --------------------------------------
 ///----------------------------------------------------------------------------------------------
+
+String networkLayerManager::getEthernetIP() {
+  _EthernetIP = ETH.localIP();
+  return _EthernetIP.toString();
+}
+
+void networkLayerManager::setEthernetDHCP(bool status) {
+  if (status) {
+    _EthernetIP = IPAddress(0,0,0,0);
+  } else {
+    _EthernetIP = IPAddress(192, 168, 0, 5);
+  }
+}
+
+bool networkLayerManager::getEthernetDHCPStatus() {
+  return _EthernetIP == IPAddress(0,0,0,0); 
+}
 
 void networkLayerManager::configureEthernet_IP(uint8_t ip[]) {
   IPAddress _EthernetIP(ip[0], ip[1], ip[2], ip[3]);

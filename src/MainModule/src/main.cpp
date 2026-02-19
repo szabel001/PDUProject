@@ -31,7 +31,7 @@ void setup() {
 
   webserver->runServer(); // Initialize the web server
 
-  globalIEC->setpowerDataUpdateCycleTime(1000); // Set the power data update cycle time to 1 second (1000 ms)
+  globalIEC->setpowerDataUpdateCycleTime(1); // Set the power data update cycle time to 1 second (1000 ms)
 
   envSensor = new EnvironmentSensor();
 
