@@ -408,6 +408,20 @@ footer {
   gap:20px;
 }
 
+.detail-chart {
+  width: 100%;
+  height: 250px;               /* fix grafikon méret */
+  max-height: 0;               /* alapból zárt */
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.35s ease, opacity 0.25s ease;
+}
+
+.detail-chart.open {
+  max-height: 250px;           /* ugyanannyi, mint a height */
+  opacity: 1;
+}
+
 .metric {
   background:var(--card);
   padding:15px;

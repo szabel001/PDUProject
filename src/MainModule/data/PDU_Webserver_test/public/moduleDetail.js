@@ -65,11 +65,11 @@ function renderModuleDetail(m) {
 
     <div style="margin-top:12px">
       <h3>Grafikonok</h3>
-      <div id="chartContainer" style="display:flex;flex-direction:column;gap:8px">
+      <div id="chartContainer" style="display:flex;flex-direction:column;gap:8px;">
         <button class="btn ghost chart-toggle" data-target="chart_volt">Feszültség (V)</button>
         <canvas id="chart_volt" class="detail-chart"></canvas>
 
-        <button class="btn ghost chart-toggle" data-target="chart_amp">Áram (A)</button>
+        <button class="btn ghost chart-toggle" data-target="chart_amp">Current (A)</button>
         <canvas id="chart_amp" class="detail-chart"></canvas>
 
         <button class="btn ghost chart-toggle" data-target="chart_watt">Teljesítmény (W)</button>
@@ -84,23 +84,22 @@ function renderModuleDetail(m) {
   `;
   moduleDetailCard.appendChild(html);
 
-  // ----------------- Collapsible charts -----------------
+  // ----------------- Collapsible charts (ANIMÁLT) -----------------
   moduleDetailCard.querySelectorAll('.chart-toggle').forEach(btn => {
     const target = moduleDetailCard.querySelector('#' + btn.dataset.target);
-    target.style.display = 'none'; // initially hidden
+
     btn.onclick = () => {
-      if (target.style.display === 'none') {
-        target.style.display = 'block';
-        // Force Chart.js resize
-        const ch = chartsDetail[m.modbus_id][btn.dataset.target];
-        if (ch) ch.resize();
-      } else {
-        target.style.display = 'none';
+      target.classList.toggle('open');
+
+      // Chart.js resize késleltetve, hogy a lenyílás után történjen
+      const ch = chartsDetail[m.modbus_id][btn.dataset.target];
+      if (ch) {
+        setTimeout(() => ch.resize(), 350);
       }
     };
   });
 
-  // create or update charts
+  // ----------------- Chart létrehozás -----------------
   if (!chartsDetail[m.modbus_id]) {
     chartsDetail[m.modbus_id] = {};
     chartsDetail[m.modbus_id]['chart_volt'] = new Chart(document.getElementById('chart_volt'), {
@@ -120,7 +119,7 @@ function renderModuleDetail(m) {
     });
   }
 
-  // render relays
+  // ----------------- Relék -----------------
   const rc = document.getElementById('relaysContainer');
   rc.innerHTML = '';
   if (Array.isArray(m.relays)) {
