@@ -362,55 +362,78 @@ footer {
 }
 
 .modern-card {
-  border-radius: 18px;
-  padding: 18px;
+  border-radius:18px;
+  padding:18px;
 }
 
 .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
 .badge {
-  background: var(--primary);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+  background:var(--primary);
+  padding:6px 12px;
+  border-radius:20px;
+  font-size:12px;
+  font-weight:600;
 }
 
 .metrics {
-  display: flex;
-  justify-content: space-between;
-  margin: 15px 0;
+  display:flex;
+  justify-content:space-between;
+  margin:15px 0;
 }
 
 .metrics div {
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
+  display:flex;
+  flex-direction:column;
+  font-size:13px;
 }
 
 .mini-chart {
-  height: 60px !important;
+  height:60px !important;
 }
 
 .card-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
+  display:flex;
+  justify-content:space-between;
+  margin-top:10px;
 }
 
 .detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:20px;
+}
+
+.detail-chart {
+  width: 100%;
+  height: 250px;               /* fix grafikon méret */
+  max-height: 0;               /* alapból zárt */
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.35s ease, opacity 0.25s ease;
+}
+
+.detail-chart.open {
+  max-height: 250px;           /* ugyanannyi, mint a height */
+  opacity: 1;
 }
 
 .metric {
-  background: var(--card);
-  padding: 15px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background:var(--card);
+  padding:15px;
+  border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Új osztály a kártyák egymás alá rendezéséhez */
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 600px; /* Így nem nyúlnak el túlzottan a képernyő széléig */
+  margin: 0 auto; /* Középre igazítja az oszlopot */
 }

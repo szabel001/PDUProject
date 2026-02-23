@@ -56,9 +56,41 @@ function randomizeMeasurements() {
 // ----------------------
 
 app.use(express.static("public"));
+app.use(express.json()); // JSON formátumú kérések (POST) feldolgozásához
+
+// Fake beállítások adatbázis
+let currentSettings = {
+  pdu: {
+    ip: "192.168.1.100",
+    gateway: "192.168.1.1",
+    maxCurrent: 16,
+    maxPower: 3500
+  },
+  iec: {
+    baudRate: 9600,
+    parity: "None"
+  }
+};
 
 app.get("/api/data", (req, res) => {
   res.json(modules);
+});
+
+// Beállítások lekérése
+app.get("/api/settings", (req, res) => {
+  res.json(currentSettings);
+});
+
+// Beállítások mentése
+app.post("/api/settings", (req, res) => {
+  const newSettings = req.body;
+  
+  // Részleges frissítés (deep merge egyszerűsítve)
+  if (newSettings.pdu) currentSettings.pdu = { ...currentSettings.pdu, ...newSettings.pdu };
+  if (newSettings.iec) currentSettings.iec = { ...currentSettings.iec, ...newSettings.iec };
+  
+  console.log("Új beállítások mentve:", currentSettings);
+  res.json({ ok: true, message: "Settings saved successfully" });
 });
 
 app.get("/api/toggle", (req, res) => {

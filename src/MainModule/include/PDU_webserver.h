@@ -3,9 +3,10 @@
 
 #include <networkLayerManager.h>
 #include <SPIFFS.h>
-
 #include <AsyncWebSocket.h>
 #include <IECControl.h>
+#include <ArduinoJson.h>
+#include "variables.h"     // Elérjük az NVS író/olvasó függvényeket
 
 class PDU_webserver {
 public:

@@ -428,3 +428,12 @@ footer {
   border-radius:16px;
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
+
+/* Új osztály a kártyák egymás alá rendezéséhez */
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 600px; /* Így nem nyúlnak el túlzottan a képernyő széléig */
+  margin: 0 auto; /* Középre igazítja az oszlopot */
+}

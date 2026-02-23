@@ -32,16 +32,24 @@ float adcToCurrent(int adc)
     return current;
 }
 
-void readCurrentData(ADC_HandleTypeDef* hadc){
-  HAL_ADC_Stop(hadc); // Poll ADC1 Perihperal & TimeOut = 1mSec
-  HAL_ADC_PollForConversion(hadc, 1); // Read The ADC Conversion Result & Map It To PWM DutyCycle
-  uint16_t ADCRaw = HAL_ADC_GetValue(hadc);
-  actualCurrent = 0;
-  for(int i = 0; i < Holding_Registers_Database[MEAS_AVG_NUM_ADDR]; i++){
-	  actualCurrent += adcToCurrent(ADCRaw);
-  }
-  actualCurrent = actualCurrent / Holding_Registers_Database[MEAS_AVG_NUM_ADDR];
-  addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, actualCurrent);
+void readCurrentData(ADC_HandleTypeDef* hadc)
+{
+    uint32_t sum = 0;
+    uint16_t samples = Holding_Registers_Database[MEAS_AVG_NUM_ADDR];
+    if(samples == 0)
+        samples = 1;   // védelem 0 osztás ellen
+    for(uint16_t i = 0; i < samples; i++)
+    {
+        HAL_ADC_Start(hadc);
+        HAL_ADC_PollForConversion(hadc, 10);
+        uint16_t ADCRaw = HAL_ADC_GetValue(hadc);
+        HAL_ADC_Stop(hadc);
+
+        sum += ADCRaw;
+    }
+    float avgRaw = (float)sum / samples;
+    actualCurrent = adcToCurrent(avgRaw);
+    addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, actualCurrent);
 }
 
 void readVoltageData(){

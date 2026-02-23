@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <PDU_webserver.h>
 #include <TFTDisplay.h>
+#include <mqttHandler.h>
 
 uint16_t deafultHttpPort = 80; // TODO need to be configurable from web server
 
@@ -36,6 +37,8 @@ void setup() {
   envSensor = new EnvironmentSensor();
 
   tftDisplay.setupDisplay(*globalIEC, *networkLayer, *envSensor); // Initialize the TFT display with the IEC control reference
+
+  setupMQTT(); // ÚJ: MQTT inicializálása
 }
 
 uint32_t lastUpdate = 0;
@@ -47,4 +50,6 @@ void loop() {
   tftDisplay.updateActiveMenuPeriodic();
 
   webserver->broadcastModules();
+
+  handleMQTT(); // ÚJ: MQTT kezelése
 }
