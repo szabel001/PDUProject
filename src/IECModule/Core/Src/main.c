@@ -179,6 +179,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		readCurrentData(&hadc1);
+		readVoltageData();
+		readPowerData(&hadc1);
+		prevRelayState = setRelayStatus(prevRelayState);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

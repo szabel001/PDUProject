@@ -103,7 +103,7 @@ start();
 function initWebSocket() {
     console.log('Initializing WebSocket connection...');
   if (ws) ws.close();
-    const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+    const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
   try {
     ws = new WebSocket(url);
   } catch (e) {

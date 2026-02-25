@@ -11,6 +11,10 @@
 #include <variables.h>
 #include <debug.h>
 
+IPAddress convertStringToIPAddress(const String& str);
+String convertIPAddressToString(IPAddress ip);
+void ensureNVSString(const char* key, const String& value);
+
 enum wifiMode {
   OFF = WIFI_MODE_NULL, // No Wi-Fi mode
   STA = WIFI_MODE_STA, // Station mode
@@ -25,20 +29,22 @@ class networkLayerManager {
   void configureWifiSSID(String ssid);
   void configureWifiPassword(String password);
   bool getWiFiAPStatus();
-  void configureWifiIP(uint8_t ip[]);
-  void configureWifiGateway(uint8_t gateway[]);
-  void configureWifiSubnet(uint8_t subnet[]);
-  void configureWifiDNS(uint8_t dns[]);
+  void configureWifiAP_SSID(String ssid);
+  void configureWifiAP_Password(String password);
+  void configureWifiIP(IPAddress ip);
+  void configureWifiGateway(IPAddress gateway);
+  void configureWifiSubnet(IPAddress subnet);
+  void configureWifiDNS(IPAddress dnsIP);
   bool turnOnWifiAP(bool status);
   bool getWiFiSTAStatus();
   bool setfWifiSTA(bool status);
   String getEthernetIP();
   void setEthernetDHCP(bool status);
   bool getEthernetDHCPStatus();
-  void configureEthernet_IP(uint8_t ip[]);
-  void setEthernet_Gateway(uint8_t gateway[]);
-  void setEthernet_Subnet(uint8_t subnet[]);
-  void setEthernet_DNS(uint8_t dns[]);
+  void setEthernet_IP(IPAddress ip);
+  void setEthernet_Gateway(IPAddress gateway);
+  void setEthernet_Subnet(IPAddress subnet);
+  void setEthernet_DNS(IPAddress dnsIP);
   void configureEthernet();
   void configureEthernet(uint8_t ip[], uint8_t gateway[], uint8_t subnet[]);
 

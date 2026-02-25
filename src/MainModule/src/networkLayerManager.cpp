@@ -98,33 +98,46 @@ void networkLayerManager::setupAPWifi(bool status) {
 
 void networkLayerManager::configureWifiSSID(String ssid) {
   _WifiSTA_SSID = ssid;
-  writeStringToNVS("ssid_sta", ssid);
+  writeStringToNVS(NVSKeys::WIFI_STA_SSID, ssid);
 }
 
 void networkLayerManager::configureWifiPassword(String password) {
   _WifiSTA_Password = password;
-  writeStringToNVS("pwd_sta", password);
+  writeStringToNVS(NVSKeys::WIFI_STA_PWD, password);
 }
 
 bool networkLayerManager::getWiFiAPStatus() {
   return WiFiAPStatus;
 }
 
-void networkLayerManager::configureWifiIP(uint8_t ip[]) {
-  _WifiIP = IPAddress(ip[0], ip[1], ip[2], ip[3]);
+void networkLayerManager::configureWifiAP_SSID(String ssid) {
+  _WifiAP_SSID = ssid;
+  writeStringToNVS(NVSKeys::WIFI_AP_SSID, ssid);
 }
 
-void networkLayerManager::configureWifiGateway(uint8_t gateway[]) {
-  _WifiGateway = IPAddress(gateway[0], gateway[1], gateway[2], gateway[3]);
+void networkLayerManager::configureWifiAP_Password(String password) {
+  _WifiAP_Password = password;
+  writeStringToNVS(NVSKeys::WIFI_AP_PWD, password);
 }
 
-void networkLayerManager::configureWifiSubnet(uint8_t subnet[]) {
-  _WifiSubnet = IPAddress(subnet[0], subnet[1], subnet[2], subnet[3]);
+void networkLayerManager::configureWifiIP(IPAddress ip) {
+   _WifiIP = ip;
+   writeStringToNVS(NVSKeys::WIFI_IP, convertIPAddressToString(_WifiIP));
 }
 
-void networkLayerManager::configureWifiDNS(uint8_t dns[]) {
-  IPAddress dnsIP(dns[0], dns[1], dns[2], dns[3]);
+void networkLayerManager::configureWifiGateway(IPAddress gateway) {
+  _WifiGateway = gateway;
+   writeStringToNVS(NVSKeys::WIFI_GATEWAY, convertIPAddressToString(_WifiGateway));
+}
+
+void networkLayerManager::configureWifiSubnet(IPAddress subnet) {
+  _WifiSubnet = subnet;
+  writeStringToNVS(NVSKeys::WIFI_SUBNET, convertIPAddressToString(_WifiSubnet));
+}
+
+void networkLayerManager::configureWifiDNS(IPAddress dnsIP) {
   WiFi.config(_WifiIP, _WifiGateway, _WifiSubnet, dnsIP);
+  writeStringToNVS(NVSKeys::WIFI_DNS, convertIPAddressToString(dnsIP));
 }
 
 bool networkLayerManager::turnOnWifiAP(bool status) {
@@ -211,20 +224,20 @@ bool networkLayerManager::getEthernetDHCPStatus() {
   return _EthernetIP == IPAddress(0,0,0,0); 
 }
 
-void networkLayerManager::configureEthernet_IP(uint8_t ip[]) {
-  IPAddress _EthernetIP(ip[0], ip[1], ip[2], ip[3]);
+void networkLayerManager::setEthernet_IP(IPAddress ip) {
+  writeStringToNVS(NVSKeys::ETHERNET_IP, convertIPAddressToString(ip));
 }
 
-void networkLayerManager::setEthernet_Gateway(uint8_t gateway[]) {
-  IPAddress _EthernetGateway(gateway[0], gateway[1], gateway[2], gateway[3]);
+void networkLayerManager::setEthernet_Gateway(IPAddress gateway) {
+  writeStringToNVS(NVSKeys::ETHERNET_GATEWAY, convertIPAddressToString(gateway));
 }
 
-void networkLayerManager::setEthernet_Subnet(uint8_t subnet[]) {
-  IPAddress _EthernetSubnet(subnet[0], subnet[1], subnet[2], subnet[3]);
+void networkLayerManager::setEthernet_Subnet(IPAddress subnet) {
+  writeStringToNVS(NVSKeys::ETHERNET_SUBNET, convertIPAddressToString(subnet));
 }
 
-void networkLayerManager::setEthernet_DNS(uint8_t dns[]) {
-  IPAddress _EthernetDNS(dns[0], dns[1], dns[2], dns[3]);
+void networkLayerManager::setEthernet_DNS(IPAddress dnsIP) {
+  writeStringToNVS(NVSKeys::ETHERNET_DNS, convertIPAddressToString(dnsIP));
 }
 
 void networkLayerManager::configureEthernet() {

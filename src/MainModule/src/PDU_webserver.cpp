@@ -1,7 +1,7 @@
 #include "PDU_webserver.h"
 
-PDU_webserver::PDU_webserver(AsyncWebServer *server, IECControl *iecControl)
-: webServer(server), iec(iecControl), ws("/ws")
+PDU_webserver::PDU_webserver(AsyncWebServer *server, IECControl *iecControl, EnvironmentSensor *envSensor, networkLayerManager *networkLayer)
+: webServer(server), iec(iecControl), ws("/ws"), _envSensor(envSensor), _networkLayer(networkLayer)
 {
     if(!SPIFFS.begin(true)) {
         Serial.println("SPIFFS mount hiba!");
@@ -23,10 +23,11 @@ void PDU_webserver::setRelayStatusWeb(uint8_t id, uint8_t relay, bool status) {
 }
 
 // IEC frissítési ciklus
-void PDU_webserver::setUpdateInterval(uint32_t ms) {
-    if(ms < 100) ms = 100;
-    if(ms > 5000) ms = 5000;
-    updateInterval = ms;
+void PDU_webserver::setUpdateInterval(uint32_t sec) {
+    if(sec < 1) sec = 1;
+    if(sec > 60) sec = 60;
+    updateInterval = sec;
+    writeIntToNVS(NVSKeys::MEAS_CYCLE, sec);
     iec->setpowerDataUpdateCycleTime(updateInterval);
 }
 
@@ -87,8 +88,8 @@ void PDU_webserver::runServer() {
         JsonDocument doc; 
         
         // --- WIFI STA ---
-        doc["sta_ssid"] = readStringFromNVS("sta_ssid", "");
-        doc["sta_pass"] = readStringFromNVS("sta_pass", "");
+        doc["sta_ssid"] = readStringFromNVS(NVSKeys::WIFI_STA_SSID, "");
+        doc["sta_pass"] = readStringFromNVS(NVSKeys::WIFI_STA_PWD, "");
         if (WiFi.status() == WL_CONNECTED) {
             doc["sta_status"] = "Csatlakozva (" + WiFi.localIP().toString() + ")";
         } else {
@@ -96,10 +97,13 @@ void PDU_webserver::runServer() {
         }
 
         // --- WIFI AP ---
-        doc["ap_ip"]  = readStringFromNVS("ap_ip", "192.168.4.1");
-        doc["ap_gw"]  = readStringFromNVS("ap_gw", "192.168.4.1");
-        doc["ap_sn"]  = readStringFromNVS("ap_sn", "255.255.255.0");
-        doc["ap_dns"] = readStringFromNVS("ap_dns", "8.8.8.8");
+        doc["ap_ssid"] = readStringFromNVS(NVSKeys::WIFI_AP_SSID, "");
+        doc["ap_pwd"] = readStringFromNVS(NVSKeys::WIFI_AP_PWD, "");
+        doc["ap_ip"]  = readStringFromNVS(NVSKeys::WIFI_IP, "");
+        doc["ap_gw"]  = readStringFromNVS(NVSKeys::WIFI_GATEWAY, "");
+        doc["ap_sn"]  = readStringFromNVS(NVSKeys::WIFI_SUBNET, "");
+        doc["ap_dns"] = readStringFromNVS(NVSKeys::WIFI_DNS, "");
+
         if ((WiFi.getMode() & WIFI_AP) != 0) {
             doc["ap_status"] = "Aktív (Kliensek: " + String(WiFi.softAPgetStationNum()) + ")";
         } else {
@@ -107,21 +111,21 @@ void PDU_webserver::runServer() {
         }
 
         // --- ETHERNET ---
-        doc["eth_dhcp"] = readIntFromNVS("eth_dhcp", 1);
-        doc["eth_ip"]   = readStringFromNVS("eth_ip", "");
-        doc["eth_gw"]   = readStringFromNVS("eth_gw", "");
-        doc["eth_sn"]   = readStringFromNVS("eth_sn", "");
-        doc["eth_dns"]  = readStringFromNVS("eth_dns", "");
+        // doc["eth_dhcp"] = ; TODO: DHCP támogatás hozzáadása
+        doc["eth_ip"]   = readStringFromNVS(NVSKeys::ETHERNET_IP, "");
+        doc["eth_gw"]   = readStringFromNVS(NVSKeys::ETHERNET_GATEWAY, "");
+        doc["eth_sn"]   = readStringFromNVS(NVSKeys::ETHERNET_SUBNET, "");
+        doc["eth_dns"]  = readStringFromNVS(NVSKeys::ETHERNET_DNS, "");
 
         // --- MEASURING ---
-        doc["meas_oc"]    = readIntFromNVS("meas_oc", 16);
-        doc["meas_temp"]  = readStringFromNVS("meas_temp", "C");
-        doc["meas_cycle"] = readIntFromNVS("meas_cycle", 1);
-        doc["meas_delay"] = readIntFromNVS("meas_delay", 0);
+        doc["meas_oc"]    = readIntFromNVS(NVSKeys::MEAS_OC, 0);
+        doc["meas_temp"]  = readStringFromNVS(NVSKeys::MEAS_TEMP, "");
+        doc["meas_cycle"] = readIntFromNVS(NVSKeys::MEAS_CYCLE, 1);
+        doc["meas_delay"] = readIntFromNVS(NVSKeys::MEAS_DELAY, 0);
 
         // --- MQTT ---
-        doc["mqtt_server"] = readStringFromNVS("mqtt_srv", "");
-        doc["mqtt_port"] = readIntFromNVS("mqtt_port", 1883);
+        doc["mqtt_server"] = readStringFromNVS(NVSKeys::MQTT_SERVER, "");
+        doc["mqtt_port"] = readIntFromNVS(NVSKeys::MQTT_PORT, 1883);
 
         String response;
         serializeJson(doc, response);
@@ -131,60 +135,117 @@ void PDU_webserver::runServer() {
     // ==========================================
     // Beállítások MENTÉSE (POST) a klienstől
     // ==========================================
-    webServer->on("/api/settings", HTTP_POST, 
-        // 1. Request lezáró callback (Válasz küldése a kliensnek)
-        [](AsyncWebServerRequest *request) {
-            request->send(200, "application/json", "{\"ok\":true}");
-        },
-        // 2. Upload callback (Fájlfeltöltéshez, nekünk most NULL)
-        NULL,
-        // 3. Body callback (Itt dolgozzuk fel a bejövő JSON-t)
+    webServer->on("/api/settings/sta", HTTP_POST, 
+        [](AsyncWebServerRequest *request) {request->send(200, "application/json", "{\"ok\":true}");}, NULL,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            
-            // Ha a JSON belefért egyetlen adatcsomagba
             if (index == 0 && len == total) {
-                // Nyers adat konvertálása String-gé
                 String body = String((char*)data, len);
-
                 JsonDocument doc;
                 DeserializationError error = deserializeJson(doc, body);
-
                 if (!error) {
                     // --- WiFi STA ---
-                    if (doc["sta_ssid"].is<String>()) writeStringToNVS("sta_ssid", doc["sta_ssid"].as<String>());
-                    if (doc["sta_pass"].is<String>()) writeStringToNVS("sta_pass", doc["sta_pass"].as<String>());
+                    if (doc["sta_ssid"].is<String>()) {
+                        _networkLayer->configureWifiSSID(doc["sta_ssid"].as<String>());
+                    }
+                    if (doc["sta_pass"].is<String>()) {
+                        _networkLayer->configureWifiPassword(doc["sta_pass"].as<String>());
+                    }
+                    Serial.println("Rendszer beállítások sikeresen mentve az NVS-be!");
+                } else {
+                    Serial.print("JSON feldolgozási hiba: ");
+                    Serial.println(error.c_str());
+                }
+            }
+        }
+    );
 
+    webServer->on("/api/settings/ap", HTTP_POST, 
+        [](AsyncWebServerRequest *request) {request->send(200, "application/json", "{\"ok\":true}");}, NULL,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (index == 0 && len == total) {
+                String body = String((char*)data, len);
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, body);
+                if (!error) {
                     // --- WiFi AP ---
-                    if (doc["ap_ip"].is<String>())  writeStringToNVS("ap_ip", doc["ap_ip"].as<String>());
-                    if (doc["ap_gw"].is<String>())  writeStringToNVS("ap_gw", doc["ap_gw"].as<String>());
-                    if (doc["ap_sn"].is<String>())  writeStringToNVS("ap_sn", doc["ap_sn"].as<String>());
-                    if (doc["ap_dns"].is<String>()) writeStringToNVS("ap_dns", doc["ap_dns"].as<String>());
+                    if (doc["ap_ip"].is<String>()) _networkLayer->configureWifiIP(convertStringToIPAddress(doc["ap_ip"].as<String>()));
+                    if (doc["ap_gw"].is<String>())  _networkLayer->configureWifiGateway(convertStringToIPAddress(doc["ap_gw"].as<String>()));
+                    if (doc["ap_sn"].is<String>())  _networkLayer->configureWifiSubnet(convertStringToIPAddress(doc["ap_sn"].as<String>()));
+                    if (doc["ap_dns"].is<String>()) _networkLayer->configureWifiDNS(convertStringToIPAddress(doc["ap_dns"].as<String>()));
+                    if (doc["ap_ssid"].is<String>()) _networkLayer->configureWifiAP_SSID(doc["ap_ssid"].as<String>());
+                    if (doc["ap_pwd"].is<String>()) _networkLayer->configureWifiAP_Password(doc["ap_pwd"].as<String>());
+                    Serial.println("AP beállítások sikeresen mentve az NVS-be!");
+                } else {
+                    Serial.print("JSON feldolgozási hiba: ");
+                    Serial.println(error.c_str());
+                }
+            }
+        }
+    );
 
+    webServer->on("/api/settings/eth", HTTP_POST, 
+        [](AsyncWebServerRequest *request) {request->send(200, "application/json", "{\"ok\":true}");}, NULL,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (index == 0 && len == total) {
+                String body = String((char*)data, len);
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, body);
+                if (!error) {
                     // --- ETHERNET ---
-                    if (doc["eth_dhcp"].is<int>())   writeIntToNVS("eth_dhcp", doc["eth_dhcp"].as<int>());
-                    if (doc["eth_ip"].is<String>())  writeStringToNVS("eth_ip", doc["eth_ip"].as<String>());
-                    if (doc["eth_gw"].is<String>())  writeStringToNVS("eth_gw", doc["eth_gw"].as<String>());
-                    if (doc["eth_sn"].is<String>())  writeStringToNVS("eth_sn", doc["eth_sn"].as<String>());
-                    if (doc["eth_dns"].is<String>()) writeStringToNVS("eth_dns", doc["eth_dns"].as<String>());
+                    if (doc["eth_dhcp"].is<int>())   _networkLayer->setEthernetDHCP(doc["eth_dhcp"].as<int>() == 1);
+                    if (doc["eth_ip"].is<String>())  _networkLayer->setEthernet_IP(convertStringToIPAddress(doc["eth_ip"].as<String>()));
+                    if (doc["eth_gw"].is<String>())  _networkLayer->setEthernet_Gateway(convertStringToIPAddress(doc["eth_gw"].as<String>()));
+                    if (doc["eth_sn"].is<String>())  _networkLayer->setEthernet_Subnet(convertStringToIPAddress(doc["eth_sn"].as<String>()));
+                    if (doc["eth_dns"].is<String>()) _networkLayer->setEthernet_DNS(convertStringToIPAddress(doc["eth_dns"].as<String>()));
+                    _networkLayer->configureEthernet();
+                    Serial.println("Ethernet beállítások sikeresen mentve az NVS-be!");
+                } else {
+                    Serial.print("JSON feldolgozási hiba: ");
+                    Serial.println(error.c_str());
+                }
+            }
+        }
+    );
 
+    webServer->on("/api/settings/meas", HTTP_POST, 
+        [](AsyncWebServerRequest *request) {request->send(200, "application/json", "{\"ok\":true}");}, NULL,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (index == 0 && len == total) {
+                String body = String((char*)data, len);
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, body);
+                if (!error) {
                     // --- MEASURING ---
-                    if (doc["meas_oc"].is<int>())       writeIntToNVS("meas_oc", doc["meas_oc"].as<int>());
-                    if (doc["meas_temp"].is<String>())  writeStringToNVS("meas_temp", doc["meas_temp"].as<String>());
-                    if (doc["meas_delay"].is<int>())    writeIntToNVS("meas_delay", doc["meas_delay"].as<int>());
-                    
+                    if (doc["meas_oc"].is<int>())       writeIntToNVS(NVSKeys::MEAS_OC, doc["meas_oc"].as<int>());
+                    if (doc["meas_temp"].is<String>()) _envSensor->setTemperatureScale(doc["meas_temp"].as<String>() == "Celsius" ? 0 : 1);
+                    if (doc["meas_delay"].is<int>())    writeIntToNVS(NVSKeys::MEAS_DELAY, doc["meas_delay"].as<int>());
                     if (doc["meas_cycle"].is<int>()) {
                         int cycle = doc["meas_cycle"].as<int>();
-                        writeIntToNVS("meas_cycle", cycle);
-                        
-                        // Dinamikus frissítés újraindulás nélkül
+                        writeIntToNVS(NVSKeys::MEAS_CYCLE, cycle);
                         this->setUpdateInterval(cycle * 1000); 
                     }
+                    Serial.println("Mérési beállítások sikeresen mentve az NVS-be!");
+                } else {
+                    Serial.print("JSON feldolgozási hiba: ");
+                    Serial.println(error.c_str());
+                }
+            }
+        }
+    );
 
+    webServer->on("/api/settings/mqtt", HTTP_POST, 
+        [](AsyncWebServerRequest *request) {request->send(200, "application/json", "{\"ok\":true}");}, NULL,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (index == 0 && len == total) {
+                String body = String((char*)data, len);
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, body);
+                if (!error) {
                     // --- MQTT ---
-                    if (doc["mqtt_server"].is<String>()) writeStringToNVS("mqtt_srv", doc["mqtt_server"].as<String>());
-                    if (doc["mqtt_port"].is<int>()) writeIntToNVS("mqtt_port", doc["mqtt_port"].as<int>());
-                    
-                    Serial.println("Rendszer beállítások sikeresen mentve az NVS-be!");
+                    if (doc["mqtt_ena"].is<int>()) writeIntToNVS(NVSKeys::MQTT_ENA, doc["mqtt_ena"].as<int>());
+                    if (doc["mqtt_server"].is<String>()) writeStringToNVS(NVSKeys::MQTT_SERVER, doc["mqtt_server"].as<String>());
+                    if (doc["mqtt_port"].is<int>()) writeIntToNVS(NVSKeys::MQTT_PORT, doc["mqtt_port"].as<int>());
+                    Serial.println("MQTT beállítások sikeresen mentve az NVS-be!");
                 } else {
                     Serial.print("JSON feldolgozási hiba: ");
                     Serial.println(error.c_str());

@@ -21,7 +21,7 @@ function upsertModule(m) {
   if (!moduleHistory[m.modbus_id]) {
     moduleHistory[m.modbus_id] = [];
   }
-  
+
   const timeStr = new Date().toLocaleTimeString();
   moduleHistory[m.modbus_id].push({
     t: timeStr,
@@ -69,34 +69,39 @@ function renderModuleDetail(m) {
   html.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div>
-        <h2>Modul #${m.modbus_id} <span class="small">(${m.version || 'v?'})</span></h2>
-        <div class="small">ID: ${m.id} • Relays: ${m.relay_count}</div>
+        <h2>IEC Module #${m.modbus_id}</h2>
+        <span class="small"> (${m.version || 'v?'})</span>
+        <div class="small">ID: ${m.id}</div>
+        <div class="small">Relays: ${m.relay_count}</div>
+      </div>
+      <div class="chart-header" style="display:flex; justify-content:space-between;">
+          <button class="btn ghost data-toggle" data-target="module-details">Module configuration</button>
       </div>
       <div style="text-align:right">
-        <div class="small" id="detail_volt">V: ${typeof m.voltage === 'number' ? m.voltage.toFixed(2) : '--'} V</div>
-        <div class="small" id="detail_amp">A: ${typeof m.current === 'number' ? m.current.toFixed(2) : '--'} A</div>
-        <div class="small" id="detail_watt">W: ${typeof m.power === 'number' ? m.power.toFixed(2) : '--'} W</div>
+        <div class="small" id="detail_volt">Voltage: ${typeof m.voltage === 'number' ? m.voltage.toFixed(2) : '--'} V</div>
+        <div class="small" id="detail_amp">Current: ${typeof m.current === 'number' ? m.current.toFixed(2) : '--'} A</div>
+        <div class="small" id="detail_watt">Power: ${typeof m.power === 'number' ? m.power.toFixed(2) : '--'} W</div>
       </div>
     </div>
 
     <div style="margin-top:12px">
-      <h3>Grafikonok</h3>
+      <h3>Charts</h3>
       <div id="chartContainer" style="display:flex;flex-direction:column;gap:8px;">
         
         <div class="chart-header" style="display:flex; justify-content:space-between;">
-          <button class="btn ghost chart-toggle" data-target="chart_volt">Feszültség (V)</button>
+          <button class="btn ghost chart-toggle" data-target="chart_volt">Voltage (V)</button>
           <button class="btn xml-btn" onclick="exportXML(${m.modbus_id}, 'volt')">⬇ XML Export</button>
         </div>
         <canvas id="chart_volt" class="detail-chart"></canvas>
 
         <div class="chart-header" style="display:flex; justify-content:space-between;">
-          <button class="btn ghost chart-toggle" data-target="chart_amp">Áram (A)</button>
+          <button class="btn ghost chart-toggle" data-target="chart_amp">Current (A)</button>
           <button class="btn xml-btn" onclick="exportXML(${m.modbus_id}, 'amp')">⬇ XML Export</button>
         </div>
         <canvas id="chart_amp" class="detail-chart"></canvas>
 
         <div class="chart-header" style="display:flex; justify-content:space-between;">
-          <button class="btn ghost chart-toggle" data-target="chart_watt">Teljesítmény (W)</button>
+          <button class="btn ghost chart-toggle" data-target="chart_watt">Power (W)</button>
           <button class="btn xml-btn" onclick="exportXML(${m.modbus_id}, 'watt')">⬇ XML Export</button>
         </div>
         <canvas id="chart_watt" class="detail-chart"></canvas>
@@ -124,7 +129,7 @@ function renderModuleDetail(m) {
   }
 
   chartsDetail[m.modbus_id] = {};
-  
+
   // Történeti adatok betöltése a Chart JS formátumába
   const hist = moduleHistory[m.modbus_id] || [];
   const labels = hist.map(d => d.t);
@@ -139,13 +144,13 @@ function renderModuleDetail(m) {
     data: { labels: [...labels], datasets: [{ label: 'V', data: [...dataV], borderColor: '#0066ff', tension: 0.3 }] },
     options: commonOptions
   });
-  
+
   chartsDetail[m.modbus_id]['chart_amp'] = new Chart(document.getElementById('chart_amp'), {
     type: 'line',
     data: { labels: [...labels], datasets: [{ label: 'A', data: [...dataA], borderColor: '#00a651', tension: 0.3 }] },
     options: { ...commonOptions, scales: { y: { beginAtZero: true } } }
   });
-  
+
   chartsDetail[m.modbus_id]['chart_watt'] = new Chart(document.getElementById('chart_watt'), {
     type: 'line',
     data: { labels: [...labels], datasets: [{ label: 'W', data: [...dataW], borderColor: '#d64545', tension: 0.3 }] },
@@ -189,7 +194,7 @@ function exportXML(modId, type) {
   }
 
   let xmlString = '<?xml version="1.0" encoding="UTF-8"?>\n<measurements>\n';
-  
+
   hist.forEach(point => {
     let val = 0;
     if (type === 'volt') val = point.v;
@@ -201,19 +206,19 @@ function exportXML(modId, type) {
     xmlString += `    <value>${val}</value>\n`;
     xmlString += `  </dataPoint>\n`;
   });
-  
+
   xmlString += '</measurements>';
 
   // Letöltés indítása böngészőben Blob segítségével
   const blob = new Blob([xmlString], { type: 'application/xml' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = `Modul_${modId}_${type}_export.xml`;
   document.body.appendChild(a);
   a.click();
-  
+
   // Takarítás
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
@@ -238,7 +243,7 @@ function updateSmallChartData(m) {
   ch.update('none');
 }
 
-let toggleLock = {}; 
+let toggleLock = {};
 
 async function toggleRelay(modId, relayIdx, btn = null) {
   const key = `${modId}_${relayIdx}`;

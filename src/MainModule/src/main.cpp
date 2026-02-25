@@ -25,8 +25,6 @@ void setup() {
   globalIEC = new IECControl(IEC_RS485Serial); // Initialize the IEC control with the RS485 serial port
   std::vector<uint8_t> IECNumber = globalIEC->getFoundIECIDs(); // Discover the IEC modules on the RS485 bus
 
-  webserver = new PDU_webserver(&asyncServer, globalIEC);
-
   networkLayer = new networkLayerManager(); // Initialize the network layer manager
   networkLayer->initInternetProtocol();
 
@@ -35,6 +33,8 @@ void setup() {
   globalIEC->setpowerDataUpdateCycleTime(1); // Set the power data update cycle time to 1 second (1000 ms)
 
   envSensor = new EnvironmentSensor();
+
+  webserver = new PDU_webserver(&asyncServer, globalIEC, envSensor, networkLayer);
 
   tftDisplay.setupDisplay(*globalIEC, *networkLayer, *envSensor); // Initialize the TFT display with the IEC control reference
 
@@ -51,5 +51,5 @@ void loop() {
 
   webserver->broadcastModules();
 
-  handleMQTT(); // ÚJ: MQTT kezelése
+  handleMQTT(false); // ÚJ: MQTT kezelése
 }

@@ -33,12 +33,6 @@ document.addEventListener('DOMContentLoaded', function () {
         history.pushState({page:'pduSettingsPage'}, '', '#pdu');
     };
 
-    document.getElementById('iecSettings').onclick = (e) => {
-        e.preventDefault();
-        showPage('iecSettingsPage');
-        history.pushState({page:'iecSettingsPage'}, '', '#iecsettings');
-    };
-
     document.getElementById('about').onclick = (e) => {
         e.preventDefault();
         showPage('aboutPage');

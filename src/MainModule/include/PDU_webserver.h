@@ -5,12 +5,14 @@
 #include <SPIFFS.h>
 #include <AsyncWebSocket.h>
 #include <IECControl.h>
+#include <EnvironmentSensor.h>
+
 #include <ArduinoJson.h>
 #include "variables.h"     // Elérjük az NVS író/olvasó függvényeket
 
 class PDU_webserver {
 public:
-    PDU_webserver(AsyncWebServer *server, IECControl *iecControl);
+    PDU_webserver(AsyncWebServer *server, IECControl *iecControl, EnvironmentSensor *envSensor, networkLayerManager *networkLayer);
 
     void runServer();
     void broadcastModules();          // WS frissítés
@@ -20,6 +22,8 @@ private:
     AsyncWebServer *webServer;
     IECControl *iec;
     AsyncWebSocket ws;
+    EnvironmentSensor *_envSensor; // Környezeti szenzor (hőmérséklet)
+    networkLayerManager *_networkLayer; // Hálózati réteg kezelő
 
     bool hasModuleId(uint8_t id);
     void setRelayStatusWeb(uint8_t id, uint8_t relay, bool status);

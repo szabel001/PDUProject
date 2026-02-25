@@ -22,7 +22,6 @@ function renderDashboard() {
             <h2>Module #${m.modbus_id}</h2>
             <div class="small">FW ${m.version || '—'}</div>
           </div>
-          <div class="badge relay-badge">...</div>
         </div>
         <div class="metrics">
           <div><span>Voltage</span><strong class="voltage">...</strong></div>
@@ -32,6 +31,7 @@ function renderDashboard() {
         <canvas id="mini_${m.modbus_id}" class="mini-chart"></canvas>
         <div class="card-actions">
           <button class="btn ghost viewBtn">Details</button>
+          <button class="btn ghost viewBtn">Settings</button>
           <button class="btn toggleBtn">...</button>
         </div>
       `;
