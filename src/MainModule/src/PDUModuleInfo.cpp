@@ -62,4 +62,5 @@ uint16_t PDUModuleInfo::getOvercurrThreshold() {
 
 void PDUModuleInfo::setOvercurrThreshold(uint16_t overcurrThreshold) {
   _overcurrThreshold = overcurrThreshold;
+  writeIntToNVS(NVSKeys::MEAS_OC, overcurrThreshold);
 }

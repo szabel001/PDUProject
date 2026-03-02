@@ -2,20 +2,26 @@
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
-String mqttServerIP = "";
-int mqttServerPort = 1883;
+String mqttServerIP = "192.168.0.2"; 
+String mqttServerPort = "1883";
 unsigned long lastMqttPublish = 0;
 static unsigned long lastConnectAttempt = 0;
 
+void configureMQTT_Server(String serverIP, String port) {
+  mqttServerIP = serverIP;
+  mqttServerPort = port;
+  writeStringToNVS(NVSKeys::MQTT_SERVER, serverIP);
+  writeStringToNVS(NVSKeys::MQTT_PORT, String(port));
+}
 
 void setupMQTT() {
-  mqttServerIP = readStringFromNVS("mqtt_srv", "192.168.0.2");
-  mqttServerPort = readIntFromNVS("mqtt_port", 1883);
+  writeStringToNVS(NVSKeys::MQTT_SERVER, mqttServerIP);
+  writeStringToNVS(NVSKeys::MQTT_PORT, mqttServerPort);
 
   if (mqttServerIP.length() > 0) {
-    mqttClient.setServer(mqttServerIP.c_str(), mqttServerPort);
+    mqttClient.setServer(mqttServerIP.c_str(), mqttServerPort.toInt());
     mqttClient.setCallback(mqttCallback); 
-    Serial.printf("MQTT beállítva: %s:%d\n", mqttServerIP.c_str(), mqttServerPort);
+    Serial.printf("MQTT beállítva: %s:%s\n", mqttServerIP.c_str(), mqttServerPort.c_str());
   }
 }
 
@@ -59,9 +65,9 @@ void handleMQTT(bool enabled = false) {
         String topic = "pdu/module/" + String(id);
         
         StaticJsonDocument<200> doc;
-        doc["voltage"] = globalIEC->getVoltageData(id);
-        doc["current"] = globalIEC->getCurrentData(id);
-        doc["power"] = globalIEC->getPowerData(id);
+        doc["voltage"] = globalIEC->getRMSVoltageData(id);
+        doc["current"] = globalIEC->getRMSCurrentData(id);
+        doc["power"] = globalIEC->getApparentPowerData(id);
 
         char buffer[200];
         serializeJson(doc, buffer);

@@ -32,6 +32,8 @@ IECControl::IECControl(HardwareSerial& RS485Serial) : _mbMaster(RS485Serial, RS4
   _mbMaster.setTimeout(50); // Set modbus msg timeout to 10ms
   digitalWrite(RS485_IEC_DE_RE_PIN, LOW);
   collectIECModuleInfos();
+  ensureNVSInt(NVSKeys::MEAS_CYCLE, 1);
+  ensureNVSInt(NVSKeys::MEAS_OC, 32);
   _startMillis_powerRead = millis(); // Initialize the start time for power data update
 }
 
@@ -82,28 +84,29 @@ bool IECControl::setRelayStatus(uint8_t id, bool status) {
   return true;
 }
 
-bool IECControl::setCurrWarningLimit(uint8_t id, float level)
+void IECControl::setCurrWarningLimit(uint8_t id, float level)
 {
+  _writeCustCurrWarningLimit(id, level);
+}
+
+void IECControl::setOverCurrentTreshold(uint8_t id, float level)
+{
+    writeIntToNVS(NVSKeys::MEAS_OC, level);
     _writeCustCurrWarningLimit(id, level);
-    if (getCurrWarningLimit(id) == level) {
-        #ifdef DEBUG
-            Serial.println("Custom current warning limit set successfully.");
-        #endif
-        return true;
-    } else {
-        #ifdef DEBUG
-            Serial.println("Failed to set custom current warning limit.");
-        #endif
-        return false;
-    }
+}
+
+uint16_t IECControl::getOverCurrentTreshold()
+{
+    return readIntFromNVS(NVSKeys::MEAS_OC, 0);
 }
 
 uint16_t IECControl::getPowerDataUpdateCycleTime() {
-  return powerDataUpdateCycleTime;
+  return readIntFromNVS(NVSKeys::MEAS_CYCLE, 1);
 }
 
 void IECControl::setpowerDataUpdateCycleTime(uint16_t cycleTime) {
   powerDataUpdateCycleTime = cycleTime;
+  writeIntToNVS(NVSKeys::MEAS_CYCLE, cycleTime);
 }
 
 //==========================================================//
@@ -115,13 +118,28 @@ std::vector<uint8_t> IECControl::getFoundIECIDs() {
 }
 
 MeasurementData IECControl::getMeasurementData(uint8_t id) {
-  MeasurementData measData = {0, 0, 0, 0, 0};
-  measData.currentData = getCurrentData(id);
-  measData.voltageData = getVoltageData(id);
-  measData.powerData = getPowerData(id);
-  measData.frequencyData = getFrequencyData(id);
-  measData.powerFactorData = getPowerFactorData(id);
+  MeasurementData measData = {0, 0, 0, 0, 0, 0, 0};
+  measData.rmsCurrent = getRMSCurrentData(id);
+  measData.rmsVoltage = getRMSVoltageData(id);
+  measData.activePower = getActivePowerData(id);
+  measData.reactivePower = getReactivePowerData(id);
+  measData.apparentPower = getApparentPowerData(id);
+  measData.powerFactor = getPowerFactorData(id);
+  measData.acFrequency = getFrequencyData(id);
   return measData;
+}
+
+configData IECControl::getConfigData(uint8_t id) {
+  configData confData = {0, 0, 0, 0, 0, 0};
+  confData.currentLimit = getIECCurrentLimit(id);
+  confData.isRMSCurrentMeasured = getIEC_IS_RMS_CURRENT_MEASURED(id);
+  confData.isRMSVoltageMeasured = getIEC_IS_RMS_VOLTAGE_MEASURED(id);
+  confData.isActivePowerMeasured = getIEC_IS_ACTIVE_POWER_MEASURED(id);
+  confData.isReactivePowerMeasured = getIEC_IS_REACTIVE_POWER_MEASURED(id);
+  confData.isApparentPowerMeasured = getIEC_IS_APPARENT_POWER_MEASURED(id);
+  confData.isPowerFactorMeasured = getIEC_IS_POWER_FACTOR_MEASURED(id);
+  confData.isACFrequencyMeasured = getIEC_IS_AC_FREQUENCY_MEASURED(id);
+  return confData;
 }
 
 uint16_t IECControl::getIECID(uint8_t id)
@@ -178,7 +196,6 @@ uint16_t IECControl::getIEC_AVAILABLE_LEDS(uint8_t id)
     return _getIntDataFromInputRegister(id, AVAILABLE_LEDS_ADDR);
 }
 
-
 uint16_t IECControl::getIECRelayStatus(uint8_t id)
 {
     return _getIntDataFromInputRegister(id, RELAY_STATE_ADDR);
@@ -193,20 +210,28 @@ bool IECControl::getRelayStatus(uint8_t id) {
   return _iecModules[id].coils[RELAY_STATE_ADDR];
 }
 
-uint16_t IECControl::getIECStatus(uint8_t id) {
+IECStatus IECControl::getIECStatus(uint8_t id) {
   uint16_t status = _getIntDataFromInputRegister(id, IEC_STATUS_ADDR);
-  return status;
+  return static_cast<IECStatus>(status);
 }
 
-float IECControl::getCurrentData(uint8_t id) {
+float IECControl::getRMSCurrentData(uint8_t id) {
   return _getFloatDataFromInputRegister(id, RMS_CURRENT_ADDR);
 }
 
-float IECControl::getVoltageData(uint8_t id) {
+float IECControl::getRMSVoltageData(uint8_t id) {
   return _getFloatDataFromInputRegister(id, RMS_VOLTAGE_ADDR);
 }
 
-float IECControl::getPowerData(uint8_t id) {
+float IECControl::getActivePowerData(uint8_t id) {
+  return _getFloatDataFromInputRegister(id, ACTIVE_POWER_ADDR);
+}
+
+float IECControl::getReactivePowerData(uint8_t id) {
+  return _getFloatDataFromInputRegister(id, REACTIVE_POWER_ADDR);
+}
+
+float IECControl::getApparentPowerData(uint8_t id) {
   return _getFloatDataFromInputRegister(id, APPARENT_POWER_ADDR);
 }
 
@@ -321,7 +346,6 @@ void IECControl::_readIECCapabilities(uint8_t id) {
 
 void IECControl::_readIECStatus(uint8_t id) { //TODO shall be implemented in the future as real status reading, return an IECStatus enum
   _readIECUINT16InputRegister(id, IEC_STATUS_ADDR);
-  _readRelayStatus(id);
 }
 
 void IECControl::_readRelayStatus(uint8_t id) {

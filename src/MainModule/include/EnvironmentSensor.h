@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <Adafruit_AHTX0.h>
+#include "variables.h"
 
 #pragma once
 

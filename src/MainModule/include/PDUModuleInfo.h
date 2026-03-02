@@ -5,6 +5,7 @@
 #include <IECRegisterMap.h>
 #include <IECModuleInfo.h>
 #include <Esp.h>
+#include <variables.h>
 
 #define BROADCAST_ADDRESS 0
 #define MAX_SLAVES 50

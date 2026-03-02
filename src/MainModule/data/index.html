@@ -17,11 +17,11 @@
       <div class="logo">PDU</div>
       <div>
         <h1>PDU Dashboard</h1>
-        <div class="small" id="connStatus">Csatlakozás...</div>
+        <div class="small" id="connStatus">Connecting...</div>
       </div>
     </div>
     <div class="controls">
-      <button class="btn ghost" id="refreshBtn">Frissítés</button>
+      <button class="btn ghost" id="refreshBtn">Refresh</button>
       <button class="btn" id="themeBtn">🌙</button>
     </div>
   </header>
@@ -30,7 +30,6 @@
     <a href="#welcomePage" id="welcome">Welcome</a>
     <a href="#iecDashboardPage" id="iecDashboard">IEC Dashboard</a>
     <a href="#pduSettingsPage" id="pduSettings">PDU Settings</a>
-    <a href="#iecSettingsPage" id="iecSettings">IEC Settings</a>
     <a href="#aboutPage" id="about">About</a>
   </div>
 
@@ -58,25 +57,25 @@
       </section>
 
       <section id="moduleView">
-        <button class="btn ghost back" id="backBtn">← Vissza</button>
+        <button class="btn ghost back" id="backBtn">← Back</button>
         <div class="card" id="moduleDetailCard"></div>
       </section>
     </div>
 
 
     <div id="pduSettingsPage" class="page">
-      <h1 style="text-align: center;">PDU & Rendszer Beállítások</h1>
+      <h1 style="text-align: center;">PDU & System Settings</h1>
 
       <div class="settings-column">
         
         <div class="settings-card">
-          <h3>WiFi STA (Kliens mód)</h3>
+          <h3>WiFi STA (Client Mode)</h3>
           <div class="small" style="margin-bottom:10px; color:#0066ff;">Állapot: <span id="sta_status" style="font-weight:bold;">Betöltés...</span></div>
           <label>SSID</label>
           <input type="text" id="set_sta_ssid" placeholder="Saját WiFi hálózat">
           <label>Jelszó</label>
           <input type="password" id="set_sta_pass" placeholder="***">
-          <button class="btn" id="saveStaBtn">WiFi Mentése</button>
+          <button class="btn" id="saveStaBtn">Save WiFi</button>
         </div>
 
         <div class="settings-card">
@@ -90,17 +89,17 @@
           <input type="text" id="set_ap_sn" placeholder="255.255.255.0">
           <label>DNS</label>
           <input type="text" id="set_ap_dns" placeholder="8.8.8.8">
-          <button class="btn" id="saveApBtn">AP Mentése</button>
+          <button class="btn" id="saveApBtn">Save AP</button>
         </div>
 
         <div class="settings-card">
-          <h3>Ethernet Beállítások</h3>
-          <label>DHCP Engedélyezése</label>
+          <h3>Ethernet Settings</h3>
+          <label>DHCP Enable</label>
           <select id="set_eth_dhcp">
-            <option value="1">Bekapcsolva (Auto IP)</option>
-            <option value="0">Kikapcsolva (Fix IP)</option>
+            <option value="1">DHCP Off (Auto IP)</option>
+            <option value="0">DHCP On (Fix IP)</option>
           </select>
-          <label>IP Cím</label>
+          <label>IP Address</label>
           <input type="text" id="set_eth_ip" placeholder="192.168.1.10">
           <label>Gateway</label>
           <input type="text" id="set_eth_gw" placeholder="192.168.1.1">
@@ -108,32 +107,32 @@
           <input type="text" id="set_eth_sn" placeholder="255.255.255.0">
           <label>DNS</label>
           <input type="text" id="set_eth_dns" placeholder="8.8.8.8">
-          <button class="btn" id="saveEthBtn">Ethernet Mentése</button>
+          <button class="btn" id="saveEthBtn">Save Ethernet</button>
         </div>
 
         <div class="settings-card">
-          <h3>Mérési Beállítások</h3>
-          <label>Túláram küszöb (OC Threshold - A)</label>
+          <h3>Measurement Settings</h3>
+          <label>Overcurrent Threshold (OC Threshold - A)</label>
           <input type="number" id="set_meas_oc" placeholder="16">
-          <label>Hőmérséklet skála</label>
+          <label>Temperature Scale</label>
           <select id="set_meas_temp">
             <option value="C">Celsius (°C)</option>
             <option value="F">Fahrenheit (°F)</option>
           </select>
-          <label>IEC mérési ciklusidő (mp)</label>
+          <label>IEC Measurement Cycle Time (s)</label>
           <input type="number" id="set_meas_cycle" placeholder="1">
-          <label>IEC bekapcsolási késleltetés (mp)</label>
+          <label>IEC Switching Delay (s)</label>
           <input type="number" id="set_meas_delay" placeholder="0">
-          <button class="btn" id="saveMeasBtn">Mérések Mentése</button>
+          <button class="btn" id="saveMeasBtn">Save Measurements</button>
         </div>
 
         <div class="settings-card">
-          <h3>MQTT Szerver</h3>
+          <h3>MQTT Server</h3>
           <label>MQTT IP / Hostname</label>
           <input type="text" id="set_mqtt_ip" placeholder="192.168.1.50">
           <label>MQTT Port</label>
           <input type="number" id="set_mqtt_port" placeholder="1883">
-          <button class="btn" id="saveMqttBtn">MQTT Mentése</button>
+          <button class="btn" id="saveMqttBtn">Save MQTT</button>
         </div>
 
       </div>
@@ -142,7 +141,7 @@
     <div id="aboutPage" class="page">
       <div class="about-card">
         <h1>PDU Dashboard</h1>
-        <p>Developed by Tomáš Hendrych</p>
+        <p>Developed by Abel Szentgyorgyi</p>
 
         <div class="about-info">
           <div><strong>Platform:</strong> ESP32</div>

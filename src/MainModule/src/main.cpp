@@ -19,26 +19,22 @@ EnvironmentSensor* envSensor;
 
 void setup() {
   Serial.begin(115200);
-
-  Serial.setDebugOutput(true);
-
   globalIEC = new IECControl(IEC_RS485Serial); // Initialize the IEC control with the RS485 serial port
   std::vector<uint8_t> IECNumber = globalIEC->getFoundIECIDs(); // Discover the IEC modules on the RS485 bus
 
   networkLayer = new networkLayerManager(); // Initialize the network layer manager
   networkLayer->initInternetProtocol();
 
-  webserver->runServer(); // Initialize the web server
-
-  globalIEC->setpowerDataUpdateCycleTime(1); // Set the power data update cycle time to 1 second (1000 ms)
-
   envSensor = new EnvironmentSensor();
-
+  envSensor->setupEnvironmentSensor();
   webserver = new PDU_webserver(&asyncServer, globalIEC, envSensor, networkLayer);
+
+  setupMQTT(); // ÚJ: MQTT inicializálása
+
+  webserver->runServer(); // Initialize the web server
 
   tftDisplay.setupDisplay(*globalIEC, *networkLayer, *envSensor); // Initialize the TFT display with the IEC control reference
 
-  setupMQTT(); // ÚJ: MQTT inicializálása
 }
 
 uint32_t lastUpdate = 0;

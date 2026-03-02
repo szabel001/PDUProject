@@ -10,13 +10,30 @@
 #include <ModbusRTUMaster.h>
 #include <debug.h>
 #include <IECModuleInfo.h>
+#include <variables.h>
+
+struct configData {
+  uint16_t id;
+  uint16_t version;
+  uint16_t relayCount;
+  uint16_t currentLimit;
+  uint16_t isRMSVoltageMeasured;
+  uint16_t isRMSCurrentMeasured;
+  uint16_t isActivePowerMeasured;
+  uint16_t isReactivePowerMeasured;
+  uint16_t isApparentPowerMeasured;
+  uint16_t isPowerFactorMeasured;
+  uint16_t isACFrequencyMeasured;
+};
 
 struct MeasurementData {
-  float currentData;
-  float voltageData;
-  float powerData;
-  float frequencyData;
-  float powerFactorData;
+  float rmsCurrent;
+  float rmsVoltage;
+  float activePower;
+  float reactivePower;
+  float apparentPower;
+  float powerFactor;
+  float acFrequency;
 };
 
 class IECControl {
@@ -28,13 +45,16 @@ class IECControl {
     bool setRelayStatus(uint8_t id, bool status); // Set the relay status for the given slave ID
     bool getRelayStatus(uint8_t id); // Get the relay status for the given slave ID
 
-    float getCurrentData(uint8_t id);       // [A] Get the current data from the IECModuleInfo's local register
-    float getVoltageData(uint8_t id);       // [V] Get the voltage data from the IECModuleInfo's local register
-    float getPowerData(uint8_t id);         // [W] Get the power data from the IECModuleInfo's local register
+    float getRMSCurrentData(uint8_t id);       // [A] Get the current data from the IECModuleInfo's local register
+    float getRMSVoltageData(uint8_t id);       // [V] Get the voltage data from the IECModuleInfo's local register
+    float getActivePowerData(uint8_t id);         // [W] Get the power data from the IECModuleInfo's local register
+    float getReactivePowerData(uint8_t id);       // [VAR] Get the reactive power data from the IECModuleInfo's local register
+    float getApparentPowerData(uint8_t id);       // [VA] Get the apparent power data from the IECModuleInfo's local registers
     float getFrequencyData(uint8_t id);     // [Hz] Get the frequency data from the IECModuleInfo's local register
     float getPowerFactorData(uint8_t id);   // [1] Get the power factor data from the IECModuleInfo's local register
 
     MeasurementData getMeasurementData(uint8_t id);       // Get the relay status from all slaves
+    configData getConfigData(uint8_t id);
 
     uint16_t getIECID(uint8_t id); // Get the Modbus ID from the given slave ID
     uint16_t getIECVersion(uint8_t id); // Get the version from the given slave ID
@@ -53,7 +73,9 @@ class IECControl {
     uint16_t getIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id);
     uint16_t getIEC_AVAILABLE_LEDS(uint8_t id);
 
-    bool setCurrWarningLimit(uint8_t id, float level);
+    void setCurrWarningLimit(uint8_t id, float level);
+    void setOverCurrentTreshold(uint8_t id, float level);
+    uint16_t getOverCurrentTreshold();
 
     uint16_t getPowerDataUpdateCycleTime();
 
@@ -62,7 +84,7 @@ class IECControl {
 
     void collectIECModuleInfos();
 
-    uint16_t getIECStatus(uint8_t id);
+    IECStatus getIECStatus(uint8_t id);
     void setpowerDataUpdateCycleTime(uint16_t cycleTime);  // Set the global cycle time for the power data acquisition 
 
     uint16_t powerDataUpdateCycleTime = 1; // [sec]

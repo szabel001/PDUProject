@@ -169,7 +169,7 @@ if (location.hash.startsWith('#module-')) {
 
 async function fetchSettings() {
   try {
-    const res = await fetch('/api/settings');
+    const res = await fetch('/api/settings/getData');
     if (!res.ok) throw new Error("API Hiba");
     const settings = await res.json();
     
@@ -212,15 +212,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // WIFI STA MENTÉS
   if(document.getElementById('saveStaBtn')) {
-    document.getElementById('saveStaBtn').onclick = () => saveSettings({
-      sta_ssid: document.getElementById('set_sta_ssid').value,
-      sta_pass: document.getElementById('set_sta_pass').value
-    });
+  document.getElementById('saveStaBtn').onclick = () => saveSettings('/api/settings/setSta', {
+  sta_ssid: document.getElementById('set_sta_ssid').value,
+  sta_pass: document.getElementById('set_sta_pass').value
+});
   }
 
   // WIFI AP MENTÉS
   if(document.getElementById('saveApBtn')) {
-    document.getElementById('saveApBtn').onclick = () => saveSettings({
+    document.getElementById('saveApBtn').onclick = () => saveSettings('/api/settings/setAp', {
       ap_ip: document.getElementById('set_ap_ip').value,
       ap_gw: document.getElementById('set_ap_gw').value,
       ap_sn: document.getElementById('set_ap_sn').value,
@@ -230,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ETHERNET MENTÉS
   if(document.getElementById('saveEthBtn')) {
-    document.getElementById('saveEthBtn').onclick = () => saveSettings({
+    document.getElementById('saveEthBtn').onclick = () => saveSettings('/api/settings/setEth', {
       eth_dhcp: Number(document.getElementById('set_eth_dhcp').value),
       eth_ip: document.getElementById('set_eth_ip').value,
       eth_gw: document.getElementById('set_eth_gw').value,
@@ -241,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // MEASURING MENTÉS
   if(document.getElementById('saveMeasBtn')) {
-    document.getElementById('saveMeasBtn').onclick = () => saveSettings({
+    document.getElementById('saveMeasBtn').onclick = () => saveSettings('/api/settings/setMeas', {
       meas_oc: Number(document.getElementById('set_meas_oc').value),
       meas_temp: document.getElementById('set_meas_temp').value,
       meas_cycle: Number(document.getElementById('set_meas_cycle').value),
@@ -251,28 +251,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // MQTT MENTÉS
   if(document.getElementById('saveMqttBtn')) {
-    document.getElementById('saveMqttBtn').onclick = () => saveSettings({
+    document.getElementById('saveMqttBtn').onclick = () => saveSettings('/api/settings/setMqtt', {
       mqtt_server: document.getElementById('set_mqtt_ip').value,
       mqtt_port: Number(document.getElementById('set_mqtt_port').value)
     });
   }
 });
 
-async function saveSettings(payload) {
+async function saveSettings(url, payload) {
+  console.log("Küldés ide:", url, "Adat:", payload); // Debug info
   try {
-    const res = await fetch('/api/settings', {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     
-    if (res.ok) {
-      alert("Beállítások sikeresen mentve az ESP-re!");
+    const result = await res.json(); // Válasz megvárása
+    console.log("Válasz:", result); // Debug info
+    console.log("HTTP státusz:", res.status, "OK?", res.ok); // Debug info
+    console.log("API válasz 'ok' mező:", result.ok); // Debug info
+    console.log("API válasz 'error' mező:", result.error); // Debug info
+    if (res.ok && result.ok) {
+      alert("Beállítások sikeresen mentve!");
     } else {
-      alert("Hiba a mentés során.");
+      alert("Szerver hiba: " + (result.error || "Ismeretlen hiba"));
     }
   } catch (error) {
-    console.error("Hiba a küldéskor:", error);
-    alert("Hálózati hiba mentéskor.");
+    console.error("Hiba:", error);
+    alert("Hálózati hiba!");
   }
 }

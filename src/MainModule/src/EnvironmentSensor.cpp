@@ -6,14 +6,15 @@ EnvironmentSensor::EnvironmentSensor() {
 void EnvironmentSensor::setupEnvironmentSensor() {
   if (! aht.begin()) Serial.println("Could not find AHT? Check wiring");
   else Serial.println("AHT10 or AHT20 found");
+  setTemperatureScale(0); // default to Celsius
 }
 
 void EnvironmentSensor::setTemperatureScale(bool setfahrenheit) {
-  isfahrenheit = setfahrenheit;
+  ensureNVSString(NVSKeys::MEAS_TEMP, setfahrenheit == true ? "F" : "C");
 }
 
 bool EnvironmentSensor::isFahrenheit() {
-  return isfahrenheit;
+  return readStringFromNVS(NVSKeys::MEAS_TEMP, "C") == "F";
 }
 
 EnvironmentSensorData EnvironmentSensor::getData() {

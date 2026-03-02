@@ -13,7 +13,6 @@
 
 IPAddress convertStringToIPAddress(const String& str);
 String convertIPAddressToString(IPAddress ip);
-void ensureNVSString(const char* key, const String& value);
 
 enum wifiMode {
   OFF = WIFI_MODE_NULL, // No Wi-Fi mode
@@ -26,18 +25,26 @@ class networkLayerManager {
   networkLayerManager(){}
   void initInternetProtocol();
   void setupAPWifi(bool status);
-  void configureWifiSSID(String ssid);
-  void configureWifiPassword(String password);
-  bool getWiFiAPStatus();
+
+  bool getWiFiSTA_Status();
+  bool setWiFiSTA_Status(bool status);
+  void configureWifiSTA_SSID(String ssid);
+  void configureWifiSTA_Password(String password);
+  void configureWifiSTA_IP(IPAddress ip);
+  void configureWifiSTA_Gateway(IPAddress gateway);
+  void configureWifiSTA_Subnet(IPAddress subnet);
+  void configureWifiSTA_DNS(IPAddress dnsIP);
+
+  bool getWiFiAP_Status();
+  bool setWifiAP_Status(bool status);
   void configureWifiAP_SSID(String ssid);
   void configureWifiAP_Password(String password);
-  void configureWifiIP(IPAddress ip);
-  void configureWifiGateway(IPAddress gateway);
-  void configureWifiSubnet(IPAddress subnet);
-  void configureWifiDNS(IPAddress dnsIP);
-  bool turnOnWifiAP(bool status);
-  bool getWiFiSTAStatus();
-  bool setfWifiSTA(bool status);
+  void configureWifiAP_IP(IPAddress ip);
+  void configureWifiAP_Gateway(IPAddress gateway);
+  void configureWifiAP_Subnet(IPAddress subnet);
+  void configureWifiAP_DNS(IPAddress dnsIP);
+
+
   String getEthernetIP();
   void setEthernetDHCP(bool status);
   bool getEthernetDHCPStatus();
@@ -70,9 +77,15 @@ class networkLayerManager {
   String _WifiSTA_SSID;               // Wi-Fi SSID. password -> when it is used as STA (ESP can connect to a router with these credentials)
   String _WifiSTA_Password;           // external network's credentials
 
-  IPAddress _WifiIP;
-  IPAddress _WifiSubnet;
-  IPAddress _WifiGateway;
+  IPAddress _WifiAP_IP;
+  IPAddress _WifiAP_Subnet;
+  IPAddress _WifiAP_Gateway;
+  IPAddress _WifiAP_DNS;
+  
+  IPAddress _WifiSTA_IP;
+  IPAddress _WifiSTA_Subnet;
+  IPAddress _WifiSTA_Gateway;
+  IPAddress _WifiSTA_DNS;
 
   IPAddress _EthernetIP;
   IPAddress _EthernetSubnet;

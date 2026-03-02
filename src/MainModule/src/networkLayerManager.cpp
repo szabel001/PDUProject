@@ -14,36 +14,26 @@ IPAddress convertStringToIPAddress(const String& str) {
   return ip;
 }
 
-void ensureNVSString(const char* key, const String& value) {
-  if (readStringFromNVS(key, "").isEmpty()) {
-    writeStringToNVS(key, value);
-  }
-}
-
 void networkLayerManager::initInternetProtocol() {  
-  _WifiAP_SSID = "PDUMain-AP"; // default AP SSID
-  ensureNVSString(NVSKeys::WIFI_AP_SSID, _WifiAP_SSID);
-  _WifiAP_Password = "12345678"; // default AP password
-  ensureNVSString(NVSKeys::WIFI_AP_PWD, _WifiAP_Password);
+  _WifiSTA_SSID = ensureNVSString(NVSKeys::WIFI_STA_SSID, "admin");       // default STA SSID
+  _WifiSTA_Password = ensureNVSString(NVSKeys::WIFI_STA_PWD, "admin");   // default STA password
+  _WifiSTA_IP = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_STA_IP, convertIPAddressToString(IPAddress(192, 168, 0, 100))));
+  _WifiSTA_Gateway = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_STA_GATEWAY, convertIPAddressToString(IPAddress(192, 168, 0, 1))));
+  _WifiSTA_Subnet = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_STA_SUBNET, convertIPAddressToString(IPAddress(255, 255, 255, 0))));
+  _WifiSTA_DNS = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_STA_DNS, convertIPAddressToString(IPAddress(8, 8, 8, 8))));
 
-  _WifiSTA_SSID = readStringFromNVS(NVSKeys::WIFI_STA_SSID, "");       // default STA SSID
-  _WifiSTA_Password = readStringFromNVS(NVSKeys::WIFI_STA_PWD, "");   // default STA password
+  _WifiAP_SSID = ensureNVSString(NVSKeys::WIFI_AP_SSID, "PDU_MAIN_AP");
+  _WifiAP_Password = ensureNVSString(NVSKeys::WIFI_AP_PWD, "admin");   // default AP password
+  
+  _WifiAP_IP = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_AP_IP, convertIPAddressToString(IPAddress(192, 168, 4, 1))));
+  _WifiAP_Gateway = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_AP_GATEWAY, convertIPAddressToString(IPAddress(192, 168, 4, 1))));
+  _WifiAP_Subnet = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_AP_SUBNET, convertIPAddressToString(IPAddress(255, 255, 255, 0))));
+  _WifiAP_DNS = convertStringToIPAddress(ensureNVSString(NVSKeys::WIFI_AP_DNS, convertIPAddressToString(IPAddress(8, 8, 8, 8))));
 
-  _WifiIP = IPAddress(192, 168, 4, 1);
-  ensureNVSString(NVSKeys::WIFI_IP, convertIPAddressToString(_WifiIP));
-  _WifiGateway = IPAddress(192, 168, 4, 1);
-  ensureNVSString(NVSKeys::WIFI_GATEWAY, convertIPAddressToString(_WifiGateway));
-  _WifiSubnet = IPAddress(255, 255, 255, 0);
-  ensureNVSString(NVSKeys::WIFI_SUBNET, convertIPAddressToString(_WifiSubnet));
-
-  _EthernetIP = IPAddress(192, 168, 0, 5);
-  ensureNVSString(NVSKeys::ETHERNET_IP, convertIPAddressToString(_EthernetIP));
-  _EthernetGateway = IPAddress(192, 168, 0, 1);
-  ensureNVSString(NVSKeys::ETHERNET_GATEWAY, convertIPAddressToString(_EthernetGateway));
-  _EthernetSubnet = IPAddress(255, 255, 255, 0);
-  ensureNVSString(NVSKeys::ETHERNET_SUBNET, convertIPAddressToString(_EthernetSubnet));
-  _EthernetDNS = IPAddress(8, 8, 8, 8);
-  ensureNVSString(NVSKeys::ETHERNET_DNS, convertIPAddressToString(_EthernetDNS));
+  _EthernetIP = convertStringToIPAddress(ensureNVSString(NVSKeys::ETHERNET_IP, convertIPAddressToString(IPAddress(192, 168, 0, 5))));
+  _EthernetGateway = convertStringToIPAddress(ensureNVSString(NVSKeys::ETHERNET_GATEWAY, convertIPAddressToString(IPAddress(192, 168, 0, 1))));
+  _EthernetSubnet = convertStringToIPAddress(ensureNVSString(NVSKeys::ETHERNET_SUBNET, convertIPAddressToString(IPAddress(255, 255, 255, 0))));
+  _EthernetDNS = convertStringToIPAddress(ensureNVSString(NVSKeys::ETHERNET_DNS, convertIPAddressToString(IPAddress(8, 8, 8, 8))));
 
   byte mac[] = {0x4C, 0x75, 0x25, 0xE4, 0xA0, 0x3F}; // TODO: use a random MAC address generator or the MAC address of the ESP32
 
@@ -96,17 +86,7 @@ void networkLayerManager::setupAPWifi(bool status) {
   }
 }
 
-void networkLayerManager::configureWifiSSID(String ssid) {
-  _WifiSTA_SSID = ssid;
-  writeStringToNVS(NVSKeys::WIFI_STA_SSID, ssid);
-}
-
-void networkLayerManager::configureWifiPassword(String password) {
-  _WifiSTA_Password = password;
-  writeStringToNVS(NVSKeys::WIFI_STA_PWD, password);
-}
-
-bool networkLayerManager::getWiFiAPStatus() {
+bool networkLayerManager::getWiFiAP_Status() {
   return WiFiAPStatus;
 }
 
@@ -120,29 +100,29 @@ void networkLayerManager::configureWifiAP_Password(String password) {
   writeStringToNVS(NVSKeys::WIFI_AP_PWD, password);
 }
 
-void networkLayerManager::configureWifiIP(IPAddress ip) {
-   _WifiIP = ip;
-   writeStringToNVS(NVSKeys::WIFI_IP, convertIPAddressToString(_WifiIP));
+void networkLayerManager::configureWifiAP_IP(IPAddress ip) {
+   _WifiAP_IP = ip;
+   writeStringToNVS(NVSKeys::WIFI_AP_IP, convertIPAddressToString(_WifiAP_IP));
 }
 
-void networkLayerManager::configureWifiGateway(IPAddress gateway) {
-  _WifiGateway = gateway;
-   writeStringToNVS(NVSKeys::WIFI_GATEWAY, convertIPAddressToString(_WifiGateway));
+void networkLayerManager::configureWifiAP_Gateway(IPAddress gateway) {
+  _WifiAP_Gateway = gateway;
+   writeStringToNVS(NVSKeys::WIFI_AP_GATEWAY, convertIPAddressToString(_WifiAP_Gateway));
 }
 
-void networkLayerManager::configureWifiSubnet(IPAddress subnet) {
-  _WifiSubnet = subnet;
-  writeStringToNVS(NVSKeys::WIFI_SUBNET, convertIPAddressToString(_WifiSubnet));
+void networkLayerManager::configureWifiAP_Subnet(IPAddress subnet) {
+  _WifiAP_Subnet = subnet;
+  writeStringToNVS(NVSKeys::WIFI_AP_SUBNET, convertIPAddressToString(_WifiAP_Subnet));
 }
 
-void networkLayerManager::configureWifiDNS(IPAddress dnsIP) {
-  WiFi.config(_WifiIP, _WifiGateway, _WifiSubnet, dnsIP);
-  writeStringToNVS(NVSKeys::WIFI_DNS, convertIPAddressToString(dnsIP));
+void networkLayerManager::configureWifiAP_DNS(IPAddress dnsIP) {
+  WiFi.config(_WifiAP_IP, _WifiAP_Gateway, _WifiAP_Subnet, dnsIP);
+  writeStringToNVS(NVSKeys::WIFI_AP_DNS, convertIPAddressToString(dnsIP));
 }
 
-bool networkLayerManager::turnOnWifiAP(bool status) {
-  if (status == true && !WiFiAPStatus && !getWiFiSTAStatus() && _WifiAP_SSID != "" && _WifiAP_Password.length() >=8) {
-    WiFi.softAPConfig(_WifiIP, _WifiGateway, _WifiSubnet);
+bool networkLayerManager::setWifiAP_Status(bool status) {
+  if (status == true && !WiFiAPStatus && !getWiFiSTA_Status() && _WifiAP_SSID != "" && _WifiAP_Password.length() >=8) {
+    WiFi.softAPConfig(_WifiAP_IP, _WifiAP_Gateway, _WifiAP_Subnet);
     WiFi.softAP(_WifiAP_SSID, _WifiAP_Password);
     WiFiAPStatus = true;
     return true;
@@ -158,37 +138,25 @@ bool networkLayerManager::turnOnWifiAP(bool status) {
 ///-------------------------------- Wi-Fi STA mode setup ----------------------------------------
 ///----------------------------------------------------------------------------------------------
 
-bool networkLayerManager::getWiFiSTAStatus() {
+bool networkLayerManager::getWiFiSTA_Status() {
   return WiFiSTAStatus;
 }
 
-bool networkLayerManager::setfWifiSTA(bool status) {
+bool networkLayerManager::setWiFiSTA_Status(bool status) {
   if (status) {
     WiFi.begin(_WifiSTA_SSID, _WifiSTA_Password);
     if (WiFi.mode(WIFI_STA) == false) {
-      #ifdef DEBUG
-        Serial.println("Failed to set Wi-Fi mode to STA.");
-      #endif
       WiFiSTAStatus = false;
       return false;
     }
-    #ifdef DEBUG
-      Serial.println("Wi-Fi mode is STA. Connecting to SSID: " + _WifiSTA_SSID);
-    #endif
     unsigned long startAttemptTime = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
       delay(100);
     }
     if (WiFi.status() == WL_CONNECTED) {
-      #ifdef DEBUG
-        Serial.println("Connected to Wi-Fi network. IP address: " + WiFi.localIP().toString());
-      #endif
       WiFiSTAStatus = true;
       return true;
     } else {
-      #ifdef DEBUG
-        Serial.println("Failed to connect to Wi-Fi network.");
-      #endif
       WiFiSTAStatus = false;
       return false;
     }
@@ -203,10 +171,44 @@ bool networkLayerManager::setfWifiSTA(bool status) {
   }
 }
 
+
+void networkLayerManager::configureWifiSTA_SSID(String ssid) {
+  _WifiSTA_SSID = ssid;
+  writeStringToNVS(NVSKeys::WIFI_STA_SSID, ssid);
+}
+
+void networkLayerManager::configureWifiSTA_Password(String password) {
+  _WifiSTA_Password = password;
+  writeStringToNVS(NVSKeys::WIFI_STA_PWD, password);
+}
+
+void networkLayerManager::configureWifiSTA_IP(IPAddress ip) {
+  _WifiSTA_IP = ip;
+  writeStringToNVS(NVSKeys::WIFI_STA_IP, convertIPAddressToString(_WifiSTA_IP));
+}
+
+void networkLayerManager::configureWifiSTA_Gateway(IPAddress gateway) {
+  _WifiSTA_Gateway = gateway;
+  writeStringToNVS(NVSKeys::WIFI_STA_GATEWAY, convertIPAddressToString(_WifiSTA_Gateway));
+}
+
+void networkLayerManager::configureWifiSTA_Subnet(IPAddress subnet) {
+  _WifiSTA_Subnet = subnet;
+  writeStringToNVS(NVSKeys::WIFI_STA_SUBNET, convertIPAddressToString(_WifiSTA_Subnet));
+}
+
+void networkLayerManager::configureWifiSTA_DNS(IPAddress dnsIP) {
+  _WifiSTA_DNS = dnsIP;
+  writeStringToNVS(NVSKeys::WIFI_STA_DNS, convertIPAddressToString(_WifiSTA_DNS));
+}
+
+
 ///----------------------------------------------------------------------------------------------
 ///------------------------------- Ethernet configuration --------------------------------------
 ///----------------------------------------------------------------------------------------------
 
+
+//TODO this need to be modified to save to local variables too correctly!
 String networkLayerManager::getEthernetIP() {
   _EthernetIP = ETH.localIP();
   return _EthernetIP.toString();
@@ -225,18 +227,22 @@ bool networkLayerManager::getEthernetDHCPStatus() {
 }
 
 void networkLayerManager::setEthernet_IP(IPAddress ip) {
+  _EthernetIP = ip;
   writeStringToNVS(NVSKeys::ETHERNET_IP, convertIPAddressToString(ip));
 }
 
 void networkLayerManager::setEthernet_Gateway(IPAddress gateway) {
+  _EthernetGateway = gateway;
   writeStringToNVS(NVSKeys::ETHERNET_GATEWAY, convertIPAddressToString(gateway));
 }
 
 void networkLayerManager::setEthernet_Subnet(IPAddress subnet) {
+  _EthernetSubnet = subnet;
   writeStringToNVS(NVSKeys::ETHERNET_SUBNET, convertIPAddressToString(subnet));
 }
 
 void networkLayerManager::setEthernet_DNS(IPAddress dnsIP) {
+  _EthernetDNS = dnsIP;
   writeStringToNVS(NVSKeys::ETHERNET_DNS, convertIPAddressToString(dnsIP));
 }
 

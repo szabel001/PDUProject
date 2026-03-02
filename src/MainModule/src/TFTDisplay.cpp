@@ -148,34 +148,33 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
   addMenuItem(settingsMenuId, MenuItem("Wifi", MenuActionType::NAVIGATE, wifiId));
   addMenuItem(settingsMenuId, MenuItem("Ethernet", MenuActionType::NAVIGATE, ethId));
 
-  addMenuItem(wifiId, MenuItem("View WIFI config", MenuActionType::CALLBACK, -1,
-      [this]() {
-          String ip = readStringFromNVS(NVSKeys::WIFI_IP, "");
-          String gateway = readStringFromNVS(NVSKeys::WIFI_GATEWAY, "");
-          String subnet = readStringFromNVS(NVSKeys::WIFI_SUBNET, "");
-          String dns = readStringFromNVS(NVSKeys::WIFI_DNS, "");
-          drawDataViewScreen("WIFI Config", { "IP: " + ip, "Gateway: " + gateway, "Subnet: " + subnet, "DNS: " + dns });
-      }));
-
-  addMenuItem(wifiId, MenuItem("View WiFi STA", MenuActionType::CALLBACK, -1,
+  addMenuItem(wifiId, MenuItem("View WiFi STA config", MenuActionType::CALLBACK, -1,
       [this]() {
           String ssid = readStringFromNVS(NVSKeys::WIFI_STA_SSID, "");
           String password = readStringFromNVS(NVSKeys::WIFI_STA_PWD, "");
-          drawDataViewScreen("WiFi STA SSID & Password", { "SSID: " + ssid, "Password: " + password });
+          String ip = readStringFromNVS(NVSKeys::WIFI_STA_IP, "");
+          String gateway = readStringFromNVS(NVSKeys::WIFI_STA_GATEWAY, "");
+          String subnet = readStringFromNVS(NVSKeys::WIFI_STA_SUBNET, "");
+          String dns = readStringFromNVS(NVSKeys::WIFI_STA_DNS, "");
+          drawDataViewScreen("WiFi STA SSID & Password", { "SSID: " + ssid, "Password: " + password, "IP: " + ip, "Gateway: " + gateway, "Subnet: " + subnet, "DNS: " + dns });
       }));
 
-  addMenuItem(wifiId, MenuItem("View WiFi AP", MenuActionType::CALLBACK, -1, 
+  addMenuItem(wifiId, MenuItem("View WiFi AP config", MenuActionType::CALLBACK, -1, 
           [this]() {
           String ssid = readStringFromNVS(NVSKeys::WIFI_AP_SSID, "");
           String password = readStringFromNVS(NVSKeys::WIFI_AP_PWD, "");
-          drawDataViewScreen("WiFi AP SSID & Password", { "SSID: " + ssid, "Password: " + password });
+          String ip = readStringFromNVS(NVSKeys::WIFI_AP_IP, "");
+          String gateway = readStringFromNVS(NVSKeys::WIFI_AP_GATEWAY, "");
+          String subnet = readStringFromNVS(NVSKeys::WIFI_AP_SUBNET, "");
+          String dns = readStringFromNVS(NVSKeys::WIFI_AP_DNS, "");
+          drawDataViewScreen("WiFi AP SSID & Password", { "SSID: " + ssid, "Password: " + password, "IP: " + ip, "Gateway: " + gateway, "Subnet: " + subnet, "DNS: " + dns });
       }));
 
   addMenuItem(wifiId, MenuItem("Set WiFi AP status:", MenuActionType::CALLBACK, -1, [this, wifiId](){ 
-    _networkMgr->setupAPWifi(!_networkMgr->getWiFiAPStatus());
-    getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAPStatus() ? "[ON]" : "[OFF]";
+    _networkMgr->setupAPWifi(!_networkMgr->getWiFiAP_Status());
+    getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAP_Status() ? "[ON]" : "[OFF]";
     drawMenuWindow();
-  }));getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAPStatus() ? "[ON]" : "[OFF]";
+  }));getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAP_Status() ? "[ON]" : "[OFF]";
 
   // Ethernet items 
   addMenuItem(ethId, MenuItem("DHCP status: ", MenuActionType::CALLBACK, -1, [this, ethId](){ 
@@ -379,9 +378,9 @@ void TFTDisplay::updateIECDetailMenus(int id) {
 
     if (String(m.title) == "IEC Status") {
       m.items.clear();
-      addMenuItem(m.id, MenuItem("Current (A):", MenuActionType::NONE)); m.items.back().value = String(_iec->getCurrentData(id));
-      addMenuItem(m.id, MenuItem("Voltage (V):", MenuActionType::NONE)); m.items.back().value = String(_iec->getVoltageData(id));
-      addMenuItem(m.id, MenuItem("Power (W):", MenuActionType::NONE)); m.items.back().value = String(_iec->getPowerData(id));
+      addMenuItem(m.id, MenuItem("Current (A):", MenuActionType::NONE)); m.items.back().value = String(_iec->getRMSCurrentData(id));
+      addMenuItem(m.id, MenuItem("Voltage (V):", MenuActionType::NONE)); m.items.back().value = String(_iec->getRMSVoltageData(id));
+      addMenuItem(m.id, MenuItem("Power (W):", MenuActionType::NONE)); m.items.back().value = String(_iec->getApparentPowerData(id));
       // Relay toggler
       addMenuItem(m.id, MenuItem("Relay:", MenuActionType::CALLBACK, -1, [this, id](){
         _iec->setRelayStatus(id, !_iec->getIECRelayStatus(id));
