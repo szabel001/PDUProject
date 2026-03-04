@@ -23,12 +23,20 @@ function renderDashboard() {
             <div class="small">FW ${m.version || '—'}</div>
           </div>
         </div>
+
         <div class="metrics">
-          <div><span>Voltage</span><strong class="voltage">...</strong></div>
-          <div><span>Current</span><strong class="current">...</strong></div>
-          <div><span>Power</span><strong class="power">...</strong></div>
+          <div><span>RMS Voltage</span><strong class="voltage">...</strong></div>
+          <div><span>RMS Current</span><strong class="current">...</strong></div>
+          <div><span>Apparent Power</span><strong class="power">...</strong></div>
         </div>
-        <canvas id="mini_${m.modbus_id}" class="mini-chart"></canvas>
+
+        <div class="mini-chart-container">
+          <canvas id="mini_${m.modbus_id}" class="mini-chart"></canvas>
+          <div style="position: absolute; top: 15px; left: 15px; font-size: 10px; color: var(--muted); z-index: 1;">
+            Current Trend (A)
+          </div>
+        </div>
+
         <div class="card-actions">
           <button class="btn ghost viewBtn">Details</button>
           <button class="btn ghost viewBtn">Settings</button>
@@ -39,13 +47,36 @@ function renderDashboard() {
       grid.appendChild(card);
 
       // Listenerek hozzáfűzése a gombokhoz
-      card.querySelector('.viewBtn').onclick = () => openModulePage(m.modbus_id);
+      //card.querySelector('.viewBtn').onclick = () => openModulePage(m.modbus_id);
+      card.querySelector('.viewBtn:nth-child(1)').onclick = () => openModulePage(m.modbus_id); // Details
+      card.querySelector('.viewBtn:nth-child(2)').onclick = () => openIecSettings(m.modbus_id); // Settings gomb
       card.querySelector('.toggleBtn').onclick = (e) => toggleRelay(m.modbus_id, 0, e.target);
 
       // Csak az első alkalommal inicializáljuk a grafikont
       initMiniChart(m.modbus_id);
     }
   });
+}
+
+function openIecSettings(id) {
+    const m = modulesCache[id];
+    const detailCard = document.getElementById('moduleDetailCard');
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('moduleView').classList.add('active');
+    
+    detailCard.innerHTML = `
+        <h2>IEC Settings - Module #${id}</h2>
+        <div class="settings-card">
+            <label>Warning Current Limit (A)</label>
+            <input type="number" id="iec_warn_limit" value="${m.curr_warning || ''}">
+            <label>Overcurrent Threshold (A)</label>
+            <input type="number" id="iec_oc_threshold" value="${m.overcurrent || ''}">
+            <label>Switching Delay (s)</label>
+            <input type="number" id="iec_delay" value="${m.meas_delay || 0}">
+            <button class="btn" onclick="saveIecModuleSettings(${id})">Save IEC Settings</button>
+            <button class="btn ghost" onclick="showDashboard()">Back</button>
+        </div>
+    `;
 }
 
 // Az updateModuleCard cseréli a szöveget anélkül, hogy Canvas/DOM újragenerálást végezne
@@ -81,14 +112,17 @@ function initMiniChart(modId) {
       labels: [],
       datasets: [{
         data: [],
-        tension: 0.45,
-        borderWidth: 2,
+        tension: 0.5,
+        borderWidth: 1.5,
+        borderColor: '#00a651', // Áramhoz illő zöld szín
+        backgroundColor: 'rgba(0, 166, 81, 0.1)',
         pointRadius: 0,
         fill: true
       }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false, // Engedi, hogy kitöltse a rendelkezésre álló magasságot
       animation: {
         duration: 300,
         easing: 'easeOutCubic'
@@ -96,22 +130,28 @@ function initMiniChart(modId) {
       plugins: { legend: { display: false } },
       scales: {
         x: { display: false },
-        y: { display: false }
+        y: { display: false,
+              beginAtZero: true,}
       }
     }
   });
 }
 
-// function updateModuleCard(m) {
-//   const card = document.querySelector(`[data-mod="${m.modbus_id}"]`);
-//   if (!card) return;
-// 
-//   card.querySelector('.voltage').textContent =
-//     typeof m.voltage === 'number' ? m.voltage.toFixed(2) + ' V' : '--';
-// 
-//   card.querySelector('.current').textContent =
-//     typeof m.current === 'number' ? m.current.toFixed(2) + ' A' : '--';
-// 
-//   card.querySelector('.power').textContent =
-//     typeof m.power === 'number' ? m.power.toFixed(2) + ' W' : '--';
-// }
+// --- updateSmallChartData és toggleRelay változatlan maradhat, ha az a korábbi fájlban már jól működött ---
+function updateSmallChartData(m) {
+  const ch = chartsSmall[m.modbus_id];
+  if (!ch) return;
+
+  const value = m.current ?? 0;
+  const t = new Date().toLocaleTimeString();
+
+  ch.data.labels.push(t);
+  ch.data.datasets[0].data.push(value);
+
+  if (ch.data.labels.length > 40) {
+    ch.data.labels.shift();
+    ch.data.datasets[0].data.shift();
+  }
+
+  ch.update('none');
+}

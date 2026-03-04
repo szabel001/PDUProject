@@ -67,20 +67,41 @@
       <h1 style="text-align: center;">PDU & System Settings</h1>
 
       <div class="settings-column">
-        
+
         <div class="settings-card">
           <h3>WiFi STA (Client Mode)</h3>
-          <div class="small" style="margin-bottom:10px; color:#0066ff;">Állapot: <span id="sta_status" style="font-weight:bold;">Betöltés...</span></div>
-          <label>SSID</label>
-          <input type="text" id="set_sta_ssid" placeholder="Saját WiFi hálózat">
-          <label>Jelszó</label>
-          <input type="password" id="set_sta_pass" placeholder="***">
-          <button class="btn" id="saveStaBtn">Save WiFi</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <span class="small">Status: <strong id="sta_status">Loading...</strong></span>
+            <button id="sta_enable_toggle" class="btn wifi-toggle-btn off">WiFi: OFF</button>
+          </div>
+
+          <div id="sta_controls" style="display: none; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span class="small" style="font-weight: 600;">Available Networks</span>
+              <button class="btn ghost small" id="scanWifiBtn">Scan 🔍</button>
+            </div>
+
+            <div id="wifiList"
+              style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.02); border-radius: 8px; margin-bottom: 10px;">
+              <div class="small" style="padding: 15px; text-align: center; color: var(--muted);">Click scan to find
+                networks</div>
+            </div>
+
+            <div id="wifi_password_area" style="display: none; padding-top: 10px; border-top: 1px dashed #ccc;">
+              <div class="small" id="selected_ssid_label"
+                style="font-weight: bold; margin-bottom: 5px; color: var(--primary);"></div>
+              <input type="password" id="set_sta_pass" placeholder="Enter WiFi Password"
+                style="width: 100%; box-sizing: border-box;">
+              <button class="btn" id="connectStaBtn"
+                style="width: 100%; margin-top: 10px; background-color: #28a745;">Connect</button>
+            </div>
+          </div>
         </div>
 
         <div class="settings-card">
           <h3>WiFi AP (Saját hálózat)</h3>
-          <div class="small" style="margin-bottom:10px; color:#00a651;">Állapot: <span id="ap_status" style="font-weight:bold;">Betöltés...</span></div>
+          <div class="small" style="margin-bottom:10px; color:#00a651;">Állapot: <span id="ap_status"
+              style="font-weight:bold;">Betöltés...</span></div>
           <label>IP Cím</label>
           <input type="text" id="set_ap_ip" placeholder="192.168.4.1">
           <label>Gateway</label>
@@ -89,6 +110,7 @@
           <input type="text" id="set_ap_sn" placeholder="255.255.255.0">
           <label>DNS</label>
           <input type="text" id="set_ap_dns" placeholder="8.8.8.8">
+          <button id="toggleApBtn" class="btn" style="margin-bottom: 10px;">Betöltés...</button>
           <button class="btn" id="saveApBtn">Save AP</button>
         </div>
 
@@ -132,6 +154,7 @@
           <input type="text" id="set_mqtt_ip" placeholder="192.168.1.50">
           <label>MQTT Port</label>
           <input type="number" id="set_mqtt_port" placeholder="1883">
+          <button id="toggleMqttBtn" class="btn" style="margin-bottom: 10px;">Betöltés...</button>
           <button class="btn" id="saveMqttBtn">Save MQTT</button>
         </div>
 

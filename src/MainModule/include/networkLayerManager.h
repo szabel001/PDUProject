@@ -10,6 +10,7 @@
 #include <pinouts.h>
 #include <variables.h>
 #include <debug.h>
+#include <ArduinoJson.h>
 
 IPAddress convertStringToIPAddress(const String& str);
 String convertIPAddressToString(IPAddress ip);
@@ -26,8 +27,10 @@ class networkLayerManager {
   void initInternetProtocol();
   void setupAPWifi(bool status);
 
-  bool getWiFiSTA_Status();
-  bool setWiFiSTA_Status(bool status);
+  String scanNetworksJSON();
+
+  bool getWifiSTA_Status();
+  bool setWifiSTA_Status(bool status);
   void configureWifiSTA_SSID(String ssid);
   void configureWifiSTA_Password(String password);
   void configureWifiSTA_IP(IPAddress ip);

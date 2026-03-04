@@ -67,27 +67,14 @@ h1 {
   align-items: center
 }
 
-/* style.css módosítása */
 .btn {
   background: var(--primary);
   color: #fff;
-  padding: 10px 16px;
-  border-radius: 10px; /* Modernebb, kerekebb forma */
+  padding: 8px 12px;
+  border-radius: 8px;
   border: 0;
   cursor: pointer;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: background 0.3s, transform 0.1s, box-shadow 0.3s;
-}
-
-.btn:hover {
-  background: #2478ff; /* Kicsit sötétebb kék lebegéskor */
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.btn:active {
-  transform: scale(0.98); /* Benyomódás effekt */
+  font-weight: 600
 }
 
 .ghost {
@@ -109,7 +96,7 @@ main {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px
 }
 
@@ -161,14 +148,12 @@ main {
 
 canvas.smallchart {
   height: 48px !important;
-  width: 100% !important;
+  width: 100% !important
 }
 
 /* Module page */
 #moduleView {
-  display: none;
-  margin-left: 10px;
-  margin-right: 20px;
+  display: none
 }
 
 #moduleView.active {
@@ -302,7 +287,6 @@ footer {
   display: none;
   margin-top: 20px;
   margin-left: 220px;
-  margin-right: 20px;
 }
 
 .page.active {
@@ -391,7 +375,7 @@ footer {
 .metrics {
   display:flex;
   justify-content:space-between;
-  margin-bottom: 15px;
+  margin:15px 0;
 }
 
 .metrics div {
@@ -401,19 +385,7 @@ footer {
 }
 
 .mini-chart {
-  height:40px !important;
-}
-
-.mini-chart-container {
-  width: 100%;
-  height: 80px;      /* Fix magasság, de dinamikus szélesség */
-  position: relative;
-  overflow: hidden;  /* Megakadályozza a kilógást */
-}
-
-canvas.mini-chart {
-  width: 100% !important;
-  display: block;
+  height:60px !important;
 }
 
 .card-actions {
@@ -442,18 +414,6 @@ canvas.mini-chart {
   opacity: 1;
 }
 
-.detail-panel {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.35s ease, opacity 0.25s ease;
-}
-
-.detail-panel.open {
-  max-height: 500px;   /* vagy nagyobb */
-  opacity: 1;
-}
-
 .metric {
   background:var(--card);
   padding:15px;
@@ -468,17 +428,4 @@ canvas.mini-chart {
   gap: 20px;
   max-width: 600px; /* Így nem nyúlnak el túlzottan a képernyő széléig */
   margin: 0 auto; /* Középre igazítja az oszlopot */
-}
-
-.wifi-toggle-btn {
-  border-radius: 20px;
-  font-size: 12px;
-  padding: 6px 15px;
-  transition: all 0.3s;
-}
-.wifi-toggle-btn.on { background: #28a745; }
-.wifi-toggle-btn.off { background: #6c757d; }
-
-#wifiList div:hover {
-  background: rgba(0, 102, 255, 0.05);
 }

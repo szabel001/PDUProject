@@ -36,6 +36,84 @@ let modules = [
     current_limit: 5,
     is_current_measured: true,
     is_voltage_measured: true
+  },
+    {
+    modbus_id: 3,
+    id: "IEC-2",
+    voltage: 231,
+    current: 0.7,
+    power: 161,
+    relays: [false],
+    relay_count: 1,
+    version: "1.1",
+    current_limit: 5,
+    is_current_measured: true,
+    is_voltage_measured: true
+  },
+    {
+    modbus_id: 4,
+    id: "IEC-2",
+    voltage: 231,
+    current: 0.7,
+    power: 161,
+    relays: [false],
+    relay_count: 1,
+    version: "1.1",
+    current_limit: 5,
+    is_current_measured: true,
+    is_voltage_measured: true
+  },
+    {
+    modbus_id: 5,
+    id: "IEC-2",
+    voltage: 231,
+    current: 0.7,
+    power: 161,
+    relays: [false],
+    relay_count: 1,
+    version: "1.1",
+    current_limit: 5,
+    is_current_measured: true,
+    is_voltage_measured: true
+  },
+    {
+    modbus_id: 6,
+    id: "IEC-2",
+    voltage: 231,
+    current: 0.7,
+    power: 161,
+    relays: [false],
+    relay_count: 1,
+    version: "1.1",
+    current_limit: 5,
+    is_current_measured: true,
+    is_voltage_measured: true
+  },
+    {
+    modbus_id: 7,
+    id: "IEC-2",
+    voltage: 231,
+    current: 0.7,
+    power: 161,
+    relays: [false],
+    relay_count: 1,
+    version: "1.1",
+    current_limit: 5,
+    is_current_measured: true,
+    is_voltage_measured: true
+  },
+    {
+    modbus_id: 8,
+    id: "IEC-2",
+    voltage: 231,
+    current: 0.7,
+    power: 161,
+    relays: [false],
+    relay_count: 1,
+    version: "1.1",
+    current_limit: 5,
+    is_current_measured: true,
+    is_voltage_measured: true
   }
 ];
 

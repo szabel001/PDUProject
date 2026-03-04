@@ -121,7 +121,7 @@ void networkLayerManager::configureWifiAP_DNS(IPAddress dnsIP) {
 }
 
 bool networkLayerManager::setWifiAP_Status(bool status) {
-  if (status == true && !WiFiAPStatus && !getWiFiSTA_Status() && _WifiAP_SSID != "" && _WifiAP_Password.length() >=8) {
+  if (status == true && !WiFiAPStatus && !getWifiSTA_Status() && _WifiAP_SSID != "" && _WifiAP_Password.length() >=8) {
     WiFi.softAPConfig(_WifiAP_IP, _WifiAP_Gateway, _WifiAP_Subnet);
     WiFi.softAP(_WifiAP_SSID, _WifiAP_Password);
     WiFiAPStatus = true;
@@ -138,11 +138,29 @@ bool networkLayerManager::setWifiAP_Status(bool status) {
 ///-------------------------------- Wi-Fi STA mode setup ----------------------------------------
 ///----------------------------------------------------------------------------------------------
 
-bool networkLayerManager::getWiFiSTA_Status() {
+// Visszaadja a talált hálózatokat JSON formátumban
+String networkLayerManager::scanNetworksJSON() {
+  int n = WiFi.scanNetworks();
+  JsonDocument doc;
+  JsonArray array = doc.to<JsonArray>();
+  
+  for (int i = 0; i < n; ++i) {
+    JsonObject obj = array.add<JsonObject>();
+    obj["ssid"] = WiFi.SSID(i);
+    obj["rssi"] = WiFi.RSSI(i);
+    obj["secure"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+  }
+  
+  String output;
+  serializeJson(doc, output);
+  return output;
+}
+
+bool networkLayerManager::getWifiSTA_Status() {
   return WiFiSTAStatus;
 }
 
-bool networkLayerManager::setWiFiSTA_Status(bool status) {
+bool networkLayerManager::setWifiSTA_Status(bool status) {
   if (status) {
     WiFi.begin(_WifiSTA_SSID, _WifiSTA_Password);
     if (WiFi.mode(WIFI_STA) == false) {

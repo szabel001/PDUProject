@@ -86,7 +86,6 @@ void PDU_webserver::runServer() {
     // ==========================================
     webServer->on("/api/settings/getData", HTTP_GET, [this](AsyncWebServerRequest *request){
         JsonDocument doc; 
-        
         // --- WIFI STA ---
         doc["sta_ssid"] = readStringFromNVS(NVSKeys::WIFI_STA_SSID, "");
         doc["sta_pass"] = readStringFromNVS(NVSKeys::WIFI_STA_PWD, "");
@@ -94,6 +93,15 @@ void PDU_webserver::runServer() {
         doc["ap_gw"]  = readStringFromNVS(NVSKeys::WIFI_STA_GATEWAY, "");
         doc["ap_sn"]  = readStringFromNVS(NVSKeys::WIFI_STA_SUBNET, "");
         doc["ap_dns"] = readStringFromNVS(NVSKeys::WIFI_STA_DNS, "");
+        if (WiFi.status() == WL_CONNECTED) {
+            doc["sta_status"] = "Connected: " + WiFi.localIP().toString();
+        } else if (WiFi.status() == WL_DISCONNECTED) {
+            doc["sta_status"] = "Disconnected";
+        } else if (WiFi.status() == WL_CONNECT_FAILED) {
+            doc["sta_status"] = "Connection Failed";
+        } else {
+            doc["sta_status"] = "Connecting...";
+        }
         if (WiFi.status() == WL_CONNECTED) {
             doc["sta_status"] = "Csatlakozva (" + WiFi.localIP().toString() + ")";
         } else {
@@ -161,6 +169,15 @@ void PDU_webserver::runServer() {
                     if (doc["sta_gw"].is<String>())   _networkLayer->configureWifiSTA_Gateway(convertStringToIPAddress(doc["sta_gw"].as<String>()));
                     if (doc["sta_sn"].is<String>())   _networkLayer->configureWifiSTA_Subnet(convertStringToIPAddress(doc["sta_sn"].as<String>()));
                     if (doc["sta_dns"].is<String>())  _networkLayer->configureWifiSTA_DNS(convertStringToIPAddress(doc["sta_dns"].as<String>()));
+
+                    if (doc["sta_connect"].is<String>()) {
+                        String status = doc["sta_connect"].as<String>();
+                        if (status == "connect") {
+                            _networkLayer->setWifiSTA_Status(true);
+                        } else if (status == "disconnect") {
+                            _networkLayer->setWifiSTA_Status(false);
+                        }
+                    }
                     Serial.println("STA beállítások mentve!");
                     request->send(200, "application/json", "{\"ok\":true}");
                 } else {
@@ -168,6 +185,42 @@ void PDU_webserver::runServer() {
                     request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
                 }
             }
+        }
+    );
+
+        // 1. WiFi Szkennelés végpont
+    webServer->on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        int n = WiFi.scanNetworks();
+        JsonDocument doc;
+        JsonArray array = doc.to<JsonArray>();
+        
+        for (int i = 0; i < n; ++i) {
+            JsonObject obj = array.add<JsonObject>();
+            obj["ssid"] = WiFi.SSID(i);
+            obj["rssi"] = WiFi.RSSI(i);
+            obj["secure"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+        }
+        
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+        WiFi.scanDelete(); // Memória felszabadítása
+    });
+
+    // 2. WiFi Mód (Be/Ki) végpont
+    webServer->on("/api/settings/setStaMode", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            deserializeJson(doc, data);
+            bool enabled = doc["enabled"] | false;
+            
+            if (enabled) {
+                WiFi.mode(WIFI_AP_STA); // AP és STA egyszerre
+            } else {
+                WiFi.disconnect(true);
+                WiFi.mode(WIFI_AP); // Csak AP marad
+            }
+            request->send(200, "application/json", "{\"ok\":true}");
         }
     );
 
@@ -189,7 +242,7 @@ void PDU_webserver::runServer() {
                     if (doc["ap_gw"].is<String>())   _networkLayer->configureWifiAP_Gateway(convertStringToIPAddress(doc["ap_gw"].as<String>()));
                     if (doc["ap_sn"].is<String>())   _networkLayer->configureWifiAP_Subnet(convertStringToIPAddress(doc["ap_sn"].as<String>()));
                     if (doc["ap_dns"].is<String>())  _networkLayer->configureWifiAP_DNS(convertStringToIPAddress(doc["ap_dns"].as<String>()));
-                    if (doc["ap_ena"].is<String>()) _networkLayer->setWifiAP_Status(doc["ap_ena"].as<String>() == "true");
+                    if (doc["ap_toggle"].is<String>()) _networkLayer->setWifiAP_Status(doc["ap_toggle"].as<String>() == "true");
 
                     Serial.println("AP Settings saved!");
                     request->send(200, "application/json", "{\"ok\":true}");
@@ -273,7 +326,9 @@ void PDU_webserver::runServer() {
                 DeserializationError error = deserializeJson(doc, jsonBuffer);
                 
                 if (!error) {
-                    if (doc["mqtt_ena"].is<int>()) writeIntToNVS(NVSKeys::MQTT_ENA, doc["mqtt_ena"].as<int>());
+                    if (doc["mqtt_ena"].is<int>()) {
+                        writeIntToNVS(NVSKeys::MQTT_ENA, doc["mqtt_ena"].as<int>());
+                    }
                     if (doc["mqtt_server"].is<String>()) writeStringToNVS(NVSKeys::MQTT_SERVER, doc["mqtt_server"].as<String>());
                     if (doc["mqtt_port"].is<int>()) writeIntToNVS(NVSKeys::MQTT_PORT, doc["mqtt_port"].as<int>());
                     Serial.println("MQTT beállítások mentve!");
@@ -298,14 +353,20 @@ void PDU_webserver::runServer() {
             obj["modbus_id"] = id;
             obj["id"] = iec->getIECID(id);
 
-            obj["voltage"] = iec->getRMSVoltageData(id);
-            obj["current"] = iec->getRMSCurrentData(id);
-            obj["power"] = iec->getApparentPowerData(id);
+            obj["RMSvoltage"] = iec->getRMSVoltageData(id);
+            obj["RMScurrent"] = iec->getRMSCurrentData(id);
+            obj["apparentPower"] = iec->getApparentPowerData(id);
+            obj["activePower"] = iec->getActivePowerData(id);
+            obj["reactivePower"] = iec->getReactivePowerData(id);
+            
             obj["version"] = iec->getIECVersion(id);
             obj["relay_count"] = iec->getIECRelayCount(id);
 
             obj["overcurrent"] = iec->getOverCurrentTreshold();
             obj["curr_warning"] = iec->getCurrWarningLimit(id);
+
+            obj["availableLeds"] = iec->getIEC_AVAILABLE_LEDS(id);
+            obj["currentLimit"] = iec->getIECCurrentLimit(id);
 
             obj["isRMSVoltageMeasured"] = iec->getIEC_IS_RMS_VOLTAGE_MEASURED(id);
             obj["isRMSCurrentMeasured"] = iec->getIEC_IS_RMS_CURRENT_MEASURED(id);
@@ -332,20 +393,62 @@ void PDU_webserver::runServer() {
     // ==========================================
     // API: Relé billentése
     // ==========================================
-    webServer->on("/api/toggle", HTTP_GET, [this](AsyncWebServerRequest *request){
-        if(!request->hasParam("mod") || !request->hasParam("relay")){
-            request->send(400,"text/plain","Missing mod or relay parameter");
-            return;
-        }
-        int mod = request->getParam("mod")->value().toInt();
-        int relay = request->getParam("relay")->value().toInt();
-        if(!hasModuleId(mod) || relay<0 || relay>=8){
-            request->send(400,"text/plain","Invalid module or relay");
-            return;
-        }
-        setRelayStatusWeb(mod,relay,!iec->getIECRelayStatus(mod));
-        request->send(200,"text/plain","OK");
+
+    // AP Toggle végpont (Egyszerűsített példa)
+    webServer->on("/api/settings/ap_toggle", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, 
+    [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Itt dolgozd fel a JSON-t {"active": true/false}
+        JsonDocument doc;
+        deserializeJson(doc, data, len);
+        _networkLayer->setupAPWifi(doc["active"]);
+        request->send(200, "application/json", "{\"ok\":true}");
     });
+
+    // MQTT Toggle végpont
+    webServer->on("/api/settings/mqttConnect", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, 
+    [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        JsonDocument doc;
+        deserializeJson(doc, data, len);
+        writeIntToNVS(NVSKeys::MQTT_ENA, doc["mqtt_ena"]);
+        request->send(200, "application/json", "{\"ok\":true}");
+    });
+
+
+    webServer->on("/api/module/settings", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            static String jsonBuffer = "";
+            if (index == 0) jsonBuffer = "";
+            for (size_t i = 0; i < len; i++) jsonBuffer += (char)data[i];
+
+            if (index + len == total) {
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, jsonBuffer);
+                
+                if (!error && doc.containsKey("mod")) {
+                    uint8_t modId = doc["mod"];
+                    
+                    // Értékek beállítása az IECControl-on keresztül
+                    if (doc.containsKey("warn")) {
+                        iec->setCurrWarningLimit(modId, doc["warn"].as<float>());
+                    }
+                    if (doc.containsKey("oc")) {
+                        iec->setOverCurrentTreshold(modId, doc["oc"].as<float>());
+                    }
+                    if (doc.containsKey("delay")) {
+                        // Itt feltételezzük, hogy van ilyen hívás az IECControl-ban vagy NVS-ben
+                        // Ha globális a késleltetés:
+                        writeIntToNVS(NVSKeys::MEAS_DELAY, doc["delay"].as<int>());
+                    }
+
+                    Serial.printf("IEC Module %d settings updated\n", modId);
+                    request->send(200, "application/json", "{\"ok\":true}");
+                } else {
+                    request->send(400, "application/json", "{\"ok\":false,\"error\":\"JSON hiba vagy hiányzó mod ID\"}");
+                }
+            }
+        }
+    );
+
 
     // --- Static fájlok kiszolgálása a belső flash-ről (SPIFFS)
     webServer->serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");

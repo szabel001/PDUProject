@@ -19,6 +19,7 @@ let chartsDetail = {};            // modul oldal nagy chartok
 let ws = null;
 let wsReconnectInterval = 2000;
 let connected = false;
+let currentSettings = {};
 
 const connStatusEl = document.getElementById('connStatus');
 const modulesGrid = document.getElementById('modulesGrid');
@@ -256,6 +257,30 @@ document.addEventListener("DOMContentLoaded", () => {
       mqtt_port: Number(document.getElementById('set_mqtt_port').value)
     });
   }
+
+  // AP gomb
+  if(document.getElementById('toggleApBtn')) {
+      document.getElementById('toggleApBtn').onclick = async () => {
+          const apActive = currentSettings.ap_status && currentSettings.ap_status.includes("Aktív");
+          await saveSettings('/api/settings/ap_toggle', { active: !apActive }).then(updateAPSettingsUI);
+          await fetchSettings();
+      };
+  }
+
+    // MQTT gomb
+  if(document.getElementById('toggleMqttBtn')) {
+      document.getElementById('toggleMqttBtn').onclick = async () => {
+          const mqttActive = currentSettings.mqtt_ena === 1;
+          await saveSettings('/api/settings/mqttConnect', { mqtt_ena: mqttActive ? 0 : 1 }).then(updateMQTTSettingsUI);
+          await fetchSettings();
+      };
+  }
+
+  if(document.getElementById('connectStaBtn')) {
+    document.getElementById('connectStaBtn').onclick = () => {
+        saveSettings('/api/settings/sta_connect', { connect: true });
+    };
+  }
 });
 
 async function saveSettings(url, payload) {
@@ -282,3 +307,107 @@ async function saveSettings(url, payload) {
     alert("Hálózati hiba!");
   }
 }
+
+async function updateMQTTSettingsUI() {
+    const res = await fetch('/api/settings/mqttConnect');
+    currentSettings = await res.json();
+
+    // MQTT Gomb stílusa és felirata
+    const mqttBtn = document.getElementById('toggleMqttBtn');
+    const mqttEnabled = currentSettings.mqtt_ena === 1;
+    mqttBtn.textContent = mqttEnabled ? "MQTT: ON" : "MQTT: OFF";
+    mqttBtn.style.backgroundColor = mqttEnabled ? "#00a651" : "#d64545";
+}
+
+async function updateAPSettingsUI() {
+    const res = await fetch('/api/settings/ap_toggle');
+    currentSettings = await res.json();
+
+    // AP Gomb stílusa és felirata
+    const apBtn = document.getElementById('toggleApBtn');
+    const apActive = currentSettings.ap_status && currentSettings.ap_status.includes("Aktív");
+    apBtn.textContent = apActive ? "AP: ON" : "AP: OFF";
+    apBtn.style.backgroundColor = apActive ? "#00a651" : "#d64545";
+}
+
+
+let selectedSSID = "";
+
+// WiFi Be/Ki gomb kezelése
+const staBtn = document.getElementById('sta_enable_toggle');
+const staControls = document.getElementById('sta_controls');
+
+staBtn.onclick = async () => {
+  const isCurrentlyOn = staBtn.classList.contains('on');
+  const newState = !isCurrentlyOn;
+  
+  // UI frissítése
+  updateWifiBtnUI(newState);
+  
+  // ESP értesítése
+  await fetch('/api/settings/setStaMode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: newState })
+  });
+};
+
+function updateWifiBtnUI(enabled) {
+  staBtn.className = `btn wifi-toggle-btn ${enabled ? 'on' : 'off'}`;
+  staBtn.textContent = enabled ? "WiFi: ON" : "WiFi: OFF";
+  staControls.style.display = enabled ? 'block' : 'none';
+}
+
+// WiFi Szkennelés és listázás
+document.getElementById('scanWifiBtn').onclick = async () => {
+  const btn = document.getElementById('scanWifiBtn');
+  const list = document.getElementById('wifiList');
+  
+  btn.disabled = true;
+  btn.textContent = "Scanning...";
+  list.innerHTML = '<div class="small" style="padding: 15px; text-align: center;">Searching for networks...</div>';
+
+  try {
+    const res = await fetch('/api/wifi/scan');
+    const networks = await res.json();
+    list.innerHTML = "";
+
+    if (networks.length === 0) {
+      list.innerHTML = '<div class="small" style="padding: 15px; text-align: center;">No networks found</div>';
+    } else {
+      networks.forEach(net => {
+        const item = document.createElement('div');
+        item.style = "padding: 10px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between;";
+        item.innerHTML = `
+          <span style="font-size: 13px; font-weight: 500;">${net.ssid}</span>
+          <span class="small">${net.rssi} dBm ${net.secure ? '🔒' : ''}</span>
+        `;
+        item.onclick = () => {
+          // Kiemelés a listában
+          Array.from(list.children).forEach(c => c.style.background = "");
+          item.style.background = "rgba(0, 102, 255, 0.1)";
+          
+          selectedSSID = net.ssid;
+          document.getElementById('selected_ssid_label').textContent = "Selected: " + net.ssid;
+          document.getElementById('wifi_password_area').style.display = 'block';
+        };
+        list.appendChild(item);
+      });
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="small" style="padding: 15px; text-align: center; color: red;">Scan failed</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Scan 🔍";
+  }
+};
+
+// Csatlakozás gomb
+document.getElementById('connectStaBtn').onclick = () => {
+  const pass = document.getElementById('set_sta_pass').value;
+  saveSettings('/api/settings/setSta', {
+    sta_ssid: selectedSSID,
+    sta_pass: pass,
+    sta_connect: "connect"
+  });
+};
