@@ -113,6 +113,39 @@ void IECControl::setpowerDataUpdateCycleTime(uint16_t cycleTime) {
 //========================= Getters ========================//
 //==========================================================//
 
+float IECControl::getSumIECCurrentData() {
+  float sum = 0;
+  for (uint8_t id : _foundIECIDs) {
+    sum += getRMSCurrentData(id);
+  }
+  return sum;
+}
+
+float IECControl::getAvgIECVoltageData() {
+  float sum = 0;
+  for (uint8_t id : _foundIECIDs) {
+    sum += getRMSVoltageData(id);
+  }
+  return sum;
+}
+
+float IECControl::getSumIECPowerData() {
+  float sum = 0;
+  for (uint8_t id : _foundIECIDs) {
+    sum += getApparentPowerData(id);
+  }
+  return sum;
+}
+
+float IECControl::getAvgIECFrequencyData() {
+  if (_foundIECIDs.empty()) return 0.0f;
+  float sum = 0;
+  for (uint8_t id : _foundIECIDs) {
+    sum += getFrequencyData(id);
+  }
+  return sum / _foundIECIDs.size();
+}
+
 std::vector<uint8_t> IECControl::getFoundIECIDs() {
   return _foundIECIDs;
 }

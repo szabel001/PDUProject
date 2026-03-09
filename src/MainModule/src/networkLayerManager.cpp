@@ -65,26 +65,6 @@ void networkLayerManager::initInternetProtocol() {
 ///----------------------------------------------------------------------------------------------
 ///-------------------------------- Wi-Fi AP mode setup -----------------------------------------
 ///----------------------------------------------------------------------------------------------
-void networkLayerManager::setupAPWifi(bool status) {
-  WiFi.disconnect(true); // Disconnect from the current network and stop the Wi-Fi
-  delay(200);
-  if(status == true) {
-    WiFi.softAP(_WifiAP_SSID, _WifiAP_Password);
-    #ifdef DEBUG
-      Serial.println("Wi-Fi AP mode started.");
-      Serial.print("IP address: ");
-      Serial.println(WiFi.softAPIP());
-    #endif
-    WiFiAPStatus = true;
-  } else if (status == false) {      // TODO handle not given SSID and password
-    WiFi.softAPdisconnect(true); // Disable AP mode
-    WiFi.mode(WIFI_OFF); // Turn off Wi-Fi
-    WiFiAPStatus = false;
-    #ifdef DEBUG
-      Serial.println("Wi-Fi AP mode stopped.");
-    #endif
-  }
-}
 
 bool networkLayerManager::getWiFiAP_Status() {
   return WiFiAPStatus;
@@ -138,12 +118,105 @@ bool networkLayerManager::setWifiAP_Status(bool status) {
 ///-------------------------------- Wi-Fi STA mode setup ----------------------------------------
 ///----------------------------------------------------------------------------------------------
 
+// --- ÚJ ASZINKRON WIFI STA LOGIKA ---
+
+bool networkLayerManager::getSTAEnabled() {
+    return _staEnabled;
+}
+
+void networkLayerManager::setSTAEnabled(bool enabled) {
+    _staEnabled = enabled;
+    if (enabled) {
+        if (WiFiAPStatus) WiFi.mode(WIFI_AP_STA);
+        else WiFi.mode(WIFI_STA);
+    } else {
+        WiFi.disconnect(true);
+        if (WiFiAPStatus) WiFi.mode(WIFI_AP);
+        else WiFi.mode(WIFI_OFF);
+        _startConnecting = false;
+        WiFiSTAStatus = false;
+    }
+}
+
+void networkLayerManager::connectSTA(String ssid, String pass) {
+    if (!_staEnabled) setSTAEnabled(true);
+    _WifiSTA_SSID = ssid;
+    _WifiSTA_Password = pass;
+    writeStringToNVS(NVSKeys::WIFI_STA_SSID, ssid);
+    writeStringToNVS(NVSKeys::WIFI_STA_PWD, pass);
+    
+    WiFi.begin(ssid.c_str(), pass.c_str());
+    _startConnecting = true;
+}
+
+void networkLayerManager::startAsyncScan() {
+    if (!_isScanningMode) {
+        WiFi.scanNetworks(true); // true = aszinkron módon fusson a háttérben
+        _isScanningMode = true;
+        _scanJSON = "[]";
+    }
+}
+
+bool networkLayerManager::isScanComplete() {
+    return !_isScanningMode;
+}
+
+String networkLayerManager::getScanResultsJSON() {
+    return _scanJSON;
+}
+
+String networkLayerManager::getSTAStatusString() {
+    if (!_staEnabled) return "Disabled";
+    if (WiFi.status() == WL_CONNECTED) return "Connected to " + WiFi.SSID() + " (IP: " + WiFi.localIP().toString() + ")";
+    if (_startConnecting) return "Connecting...";
+    return "Disconnected";
+}
+
+// EZT A FÜGGVÉNYT HÍVJUK A MAIN.CPP LOOP-JÁBÓL
+void networkLayerManager::handleAsyncTasks() {
+    // 1. Szkennelés állapotának figyelése
+    if (_isScanningMode) {
+        int16_t scanRes = WiFi.scanComplete();
+        if (scanRes == WIFI_SCAN_RUNNING) {
+            // Még fut a szkennelés, nem csinálunk semmit
+        } else if (scanRes == WIFI_SCAN_FAILED) {
+            _isScanningMode = false;
+            _scanJSON = "[]";
+        } else if (scanRes >= 0) {
+            JsonDocument doc;
+            JsonArray array = doc.to<JsonArray>();
+            for (int i = 0; i < scanRes; ++i) {
+                JsonObject obj = array.add<JsonObject>();
+                obj["ssid"] = WiFi.SSID(i);
+                obj["rssi"] = WiFi.RSSI(i);
+                obj["secure"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+            }
+            serializeJson(doc, _scanJSON);
+            _isScanningMode = false;
+            WiFi.scanDelete(); // Memória felszabadítása a szkennelés után
+        }
+    }
+
+    // 2. Csatlakozás állapotának figyelése
+    if (_startConnecting) {
+        if (WiFi.status() == WL_CONNECTED) {
+            _startConnecting = false;
+            WiFiSTAStatus = true;
+        } else if (WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_NO_SSID_AVAIL) {
+            _startConnecting = false;
+            WiFiSTAStatus = false;
+        }
+    }
+}
+
+
 // Visszaadja a talált hálózatokat JSON formátumban
-String networkLayerManager::scanNetworksJSON() {
+void networkLayerManager::scanNetworksJSON() {
+  _startScanning = false;
   int n = WiFi.scanNetworks();
   JsonDocument doc;
   JsonArray array = doc.to<JsonArray>();
-  
+
   for (int i = 0; i < n; ++i) {
     JsonObject obj = array.add<JsonObject>();
     obj["ssid"] = WiFi.SSID(i);
@@ -152,8 +225,30 @@ String networkLayerManager::scanNetworksJSON() {
   }
   
   String output;
+  Serial.print(output);
   serializeJson(doc, output);
-  return output;
+
+  _scannedNetwork = output;
+}
+
+String networkLayerManager::getScannedNetworksJSON(){
+  return _scannedNetwork;
+}
+
+void networkLayerManager::startScanning(){
+  _startScanning = true;
+}
+
+bool networkLayerManager::isScanning(){
+  return _startScanning;
+}
+
+bool networkLayerManager::isConnecting(){
+  return _startConnecting;
+}
+
+bool networkLayerManager::startConnecting(){
+  if(getWifiSTA_Status() == false) _startConnecting = true;
 }
 
 bool networkLayerManager::getWifiSTA_Status() {
@@ -162,31 +257,34 @@ bool networkLayerManager::getWifiSTA_Status() {
 
 bool networkLayerManager::setWifiSTA_Status(bool status) {
   if (status) {
+    WiFi.mode(WIFI_STA);
     WiFi.begin(_WifiSTA_SSID, _WifiSTA_Password);
-    if (WiFi.mode(WIFI_STA) == false) {
-      WiFiSTAStatus = false;
-      return false;
-    }
-    unsigned long startAttemptTime = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
-      delay(100);
-    }
-    if (WiFi.status() == WL_CONNECTED) {
-      WiFiSTAStatus = true;
-      return true;
-    } else {
-      WiFiSTAStatus = false;
-      return false;
-    }
-
+    WiFiSTAStatus = false; // Még nem tudjuk, sikerül-e
+    Serial.println("WiFi csatlakozás elindítva a háttérben...");
+    _startConnecting = true; 
+    return true;
   } else {
+    _startConnecting = false;
     WiFiSTAStatus = false;
+    WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
-    #ifdef DEBUG
-      Serial.println("Wi-Fi mode is OFF.");
-    #endif
     return false;
   }
+}
+
+// Ezt a függvényt hívja a main.cpp loop-ja
+bool networkLayerManager::checkSTAConnection() {
+    if (_startConnecting) {
+        if (WiFi.status() == WL_CONNECTED) {
+            WiFiSTAStatus = true;
+            _startConnecting = false;
+            return true;
+        } else if (WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_NO_SSID_AVAIL) {
+            WiFiSTAStatus = false;
+            _startConnecting = false;
+            return false;
+        }
+    }
 }
 
 

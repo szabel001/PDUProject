@@ -13,6 +13,8 @@ extern IECControl* globalIEC;
 
 void setupMQTT();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
-void handleMQTT(bool enabled);
-
+void handleMQTT();
+// ÚJ: Állapot lekérdező függvények
+String getMQTTStatusString();
+bool isMQTTEnabled();
 #endif

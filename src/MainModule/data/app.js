@@ -14,6 +14,7 @@
 
 const MAX_POINTS = 60;            // grafikon pontok száma
 let modulesCache = {};            // modbus_id -> modul objektum
+let modulesConfigCache = {};      // modbus_id config -> modul objektum
 let chartsSmall = {};             // kártya mini chartok
 let chartsDetail = {};            // modul oldal nagy chartok
 let ws = null;
@@ -72,11 +73,22 @@ function stopPoll() {
 async function fetchOnce() {
   try {
     const res = await fetch('/api/data');
-    const arr = await res.json();
-    updateAllModules(arr);
+    const data = await res.json();
+    
+    // Szumma mezők frissítése a backend adatai alapján
+    const tcEl = document.getElementById('total_current');
+    const tpEl = document.getElementById('total_power');
+    if (tcEl && data.total_current !== undefined) tcEl.textContent = data.total_current.toFixed(2) + ' A';
+    if (tpEl && data.total_power !== undefined) tpEl.textContent = data.total_power.toFixed(2) + ' W';
+
+    // Modulok betöltése az új formátumból (vagy a régiből, ha cache-ből jön)
+    const modulesArr = data.modules ? data.modules : data;
+    
+    updateAllModules(modulesArr);
+    updateModuleConfig(modulesArr);
   } catch (e) {
     console.error('Fetch /api/data failed', e);
-    connStatusEl.textContent = 'API hiba';
+    connStatusEl.textContent = 'API error';
     connStatusEl.style.color = 'red';
   }
 }
@@ -88,7 +100,7 @@ function start() {
   // also start polling initially until ws opens
   setTimeout(() => {
     if (!connected) {
-      connStatusEl.textContent = 'WebSocket nem elérhető — Polling...';
+      connStatusEl.textContent = 'WebSocket is not available — Polling...';
       fallbackToPoll();
     } else {
       stopPoll();
@@ -115,7 +127,7 @@ function initWebSocket() {
 
   ws.onopen = () => {
     connected = true;
-    connStatusEl.textContent = 'WebSocket: csatlakozva';
+    connStatusEl.textContent = 'WebSocket: connected';
     connStatusEl.style.color = '';
     // ask full state
     ws.send(JSON.stringify({ action: 'subscribe' }));
@@ -132,7 +144,7 @@ function initWebSocket() {
 
   ws.onclose = () => {
     connected = false;
-    connStatusEl.textContent = 'WebSocket: bontva — Polling...';
+    connStatusEl.textContent = 'WebSocket: disconnected — Polling...';
     connStatusEl.style.color = 'orange';
     // reconnect after a while
     setTimeout(initWebSocket, wsReconnectInterval);
@@ -146,10 +158,20 @@ function initWebSocket() {
 
 // Handle WS messages
 function handleWsMessage(msg) {
+  // ÚJ: Szumma frissítése, ha megérkezett a backendtől a websocketen
+  if (msg.total_current !== undefined) {
+     const tcEl = document.getElementById('total_current');
+     if (tcEl) tcEl.textContent = msg.total_current.toFixed(2) + ' A';
+  }
+  if (msg.total_power !== undefined) {
+     const tpEl = document.getElementById('total_power');
+     if (tpEl) tpEl.textContent = msg.total_power.toFixed(2) + ' W';
+  }
+
+  // Modulok frissítése
   if (msg.type === 'full' && Array.isArray(msg.modules)) {
     updateAllModules(msg.modules);
   } else if (msg.type === 'update' && Array.isArray(msg.modules)) {
-    // partial updates array
     msg.modules.forEach(m => upsertModule(m));
   } else if (msg.type === 'module' && msg.module) {
     upsertModule(msg.module);
@@ -171,15 +193,20 @@ if (location.hash.startsWith('#module-')) {
 async function fetchSettings() {
   try {
     const res = await fetch('/api/settings/getData');
-    if (!res.ok) throw new Error("API Hiba");
+    if (!res.ok) throw new Error("API error");
     const settings = await res.json();
-    
+
+    // ÚJ: Eltároljuk a globális currentSettings-be az összes beállítást (a delay-t is!)
+    Object.assign(currentSettings, settings);
+
     // STA
     if(document.getElementById('set_sta_ssid')) document.getElementById('set_sta_ssid').value = settings.sta_ssid || '';
     if(document.getElementById('set_sta_pass')) document.getElementById('set_sta_pass').value = settings.sta_pass || '';
     if(document.getElementById('sta_status')) document.getElementById('sta_status').textContent = settings.sta_status || 'N/A';
 
     // AP
+    if(document.getElementById('set_ap_ssid')) document.getElementById('set_ap_ssid').value = settings.ap_ssid || '';
+    if(document.getElementById('set_ap_pass')) document.getElementById('set_ap_pass').value = settings.ap_pass || '';
     if(document.getElementById('set_ap_ip')) document.getElementById('set_ap_ip').value = settings.ap_ip || '';
     if(document.getElementById('set_ap_gw')) document.getElementById('set_ap_gw').value = settings.ap_gw || '';
     if(document.getElementById('set_ap_sn')) document.getElementById('set_ap_sn').value = settings.ap_sn || '';
@@ -200,6 +227,7 @@ async function fetchSettings() {
     if(document.getElementById('set_meas_delay')) document.getElementById('set_meas_delay').value = settings.meas_delay || 0;
 
     // MQTT
+    if(document.getElementById('mqtt_ena')) document.getElementById('mqtt_ena').value = settings.mqtt_ena || '';
     if(document.getElementById('set_mqtt_ip')) document.getElementById('set_mqtt_ip').value = settings.mqtt_server || '';
     if(document.getElementById('set_mqtt_port')) document.getElementById('set_mqtt_port').value = settings.mqtt_port || 1883;
 
@@ -211,17 +239,11 @@ async function fetchSettings() {
 document.addEventListener("DOMContentLoaded", () => {
   fetchSettings();
 
-  // WIFI STA MENTÉS
-  if(document.getElementById('saveStaBtn')) {
-  document.getElementById('saveStaBtn').onclick = () => saveSettings('/api/settings/setSta', {
-  sta_ssid: document.getElementById('set_sta_ssid').value,
-  sta_pass: document.getElementById('set_sta_pass').value
-});
-  }
-
   // WIFI AP MENTÉS
   if(document.getElementById('saveApBtn')) {
     document.getElementById('saveApBtn').onclick = () => saveSettings('/api/settings/setAp', {
+      ap_ssid: document.getElementById('set_ap_ssid').value,
+      ap_pass: document.getElementById('set_ap_pass').value,
       ap_ip: document.getElementById('set_ap_ip').value,
       ap_gw: document.getElementById('set_ap_gw').value,
       ap_sn: document.getElementById('set_ap_sn').value,
@@ -257,34 +279,10 @@ document.addEventListener("DOMContentLoaded", () => {
       mqtt_port: Number(document.getElementById('set_mqtt_port').value)
     });
   }
-
-  // AP gomb
-  if(document.getElementById('toggleApBtn')) {
-      document.getElementById('toggleApBtn').onclick = async () => {
-          const apActive = currentSettings.ap_status && currentSettings.ap_status.includes("Aktív");
-          await saveSettings('/api/settings/ap_toggle', { active: !apActive }).then(updateAPSettingsUI);
-          await fetchSettings();
-      };
-  }
-
-    // MQTT gomb
-  if(document.getElementById('toggleMqttBtn')) {
-      document.getElementById('toggleMqttBtn').onclick = async () => {
-          const mqttActive = currentSettings.mqtt_ena === 1;
-          await saveSettings('/api/settings/mqttConnect', { mqtt_ena: mqttActive ? 0 : 1 }).then(updateMQTTSettingsUI);
-          await fetchSettings();
-      };
-  }
-
-  if(document.getElementById('connectStaBtn')) {
-    document.getElementById('connectStaBtn').onclick = () => {
-        saveSettings('/api/settings/sta_connect', { connect: true });
-    };
-  }
 });
 
 async function saveSettings(url, payload) {
-  console.log("Küldés ide:", url, "Adat:", payload); // Debug info
+  console.log("Send to:", url, "Data:", payload); // Debug info
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -293,58 +291,89 @@ async function saveSettings(url, payload) {
     });
     
     const result = await res.json(); // Válasz megvárása
-    console.log("Válasz:", result); // Debug info
-    console.log("HTTP státusz:", res.status, "OK?", res.ok); // Debug info
-    console.log("API válasz 'ok' mező:", result.ok); // Debug info
-    console.log("API válasz 'error' mező:", result.error); // Debug info
+    console.log("Response:", result); // Debug info
+    console.log("HTTP status:", res.status, "OK?", res.ok); // Debug info
+    console.log("API response 'ok' field:", result.ok); // Debug info
+    console.log("API response 'error' field:", result.error); // Debug info
     if (res.ok && result.ok) {
-      alert("Beállítások sikeresen mentve!");
+      alert("Settings has been saved successfully!");
     } else {
-      alert("Szerver hiba: " + (result.error || "Ismeretlen hiba"));
+      alert("Server error: " + (result.error || "Unknown error"));
     }
   } catch (error) {
-    console.error("Hiba:", error);
-    alert("Hálózati hiba!");
+    console.error("Error:", error);
+    alert("Network error!");
   }
 }
 
-async function updateMQTTSettingsUI() {
-    const res = await fetch('/api/settings/mqttConnect');
-    currentSettings = await res.json();
-
-    // MQTT Gomb stílusa és felirata
-    const mqttBtn = document.getElementById('toggleMqttBtn');
-    const mqttEnabled = currentSettings.mqtt_ena === 1;
-    mqttBtn.textContent = mqttEnabled ? "MQTT: ON" : "MQTT: OFF";
-    mqttBtn.style.backgroundColor = mqttEnabled ? "#00a651" : "#d64545";
-}
-
-async function updateAPSettingsUI() {
-    const res = await fetch('/api/settings/ap_toggle');
-    currentSettings = await res.json();
-
-    // AP Gomb stílusa és felirata
-    const apBtn = document.getElementById('toggleApBtn');
-    const apActive = currentSettings.ap_status && currentSettings.ap_status.includes("Aktív");
-    apBtn.textContent = apActive ? "AP: ON" : "AP: OFF";
-    apBtn.style.backgroundColor = apActive ? "#00a651" : "#d64545";
-}
-
-
 let selectedSSID = "";
 
-// WiFi Be/Ki gomb kezelése
-const staBtn = document.getElementById('sta_enable_toggle');
-const staControls = document.getElementById('sta_controls');
+// Rendszeres állapot lekérdezés a szervertől (STA, AP, MQTT)
+setInterval(async () => {
+  const staStatusEl = document.getElementById('sta_status');
+  if (!staStatusEl) return; // Ha nem a settings oldalon vagyunk, ne fusson feleslegesen
 
-staBtn.onclick = async () => {
-  const isCurrentlyOn = staBtn.classList.contains('on');
-  const newState = !isCurrentlyOn;
-  
-  // UI frissítése
-  updateWifiBtnUI(newState);
-  
-  // ESP értesítése
+  try {
+    // --- STA STATUS ---
+    const resSta = await fetch('/api/settings/sta_status');
+    const dataSta = await resSta.json();
+    staStatusEl.textContent = dataSta.status;
+    const staBtn = document.getElementById('sta_enable_toggle');
+    const staControls = document.getElementById('sta_controls');
+    
+    if (dataSta.enabled) {
+      if(staBtn) { staBtn.className = 'btn wifi-toggle-btn on'; staBtn.textContent = "WiFi: ON"; }
+      if(staControls) staControls.style.display = 'block';
+    } else {
+      if(staBtn) { staBtn.className = 'btn wifi-toggle-btn off'; staBtn.textContent = "WiFi: OFF"; }
+      if(staControls) staControls.style.display = 'none';
+    }
+
+    // --- AP STATUS ---
+    const resAp = await fetch('/api/settings/ap_status');
+    const dataAp = await resAp.json();
+    const apStatusEl = document.getElementById('ap_status');
+    if(apStatusEl) apStatusEl.textContent = dataAp.status;
+    
+    const apBtn = document.getElementById('toggleApBtn');
+    if (apBtn) {
+      if (dataAp.enabled) {
+        apBtn.className = 'btn wifi-toggle-btn on';
+        apBtn.textContent = "AP: ON";
+      } else {
+        apBtn.className = 'btn wifi-toggle-btn off';
+        apBtn.textContent = "AP: OFF";
+      }
+    }
+
+    // --- MQTT STATUS ---
+    const resMqtt = await fetch('/api/settings/mqtt_status');
+    const dataMqtt = await resMqtt.json();
+    const mqttStatusEl = document.getElementById('mqtt_status');
+    if(mqttStatusEl) mqttStatusEl.textContent = dataMqtt.status;
+    
+    const mqttBtn = document.getElementById('toggleMqttBtn');
+    if (mqttBtn) {
+      if (dataMqtt.enabled) {
+        mqttBtn.className = 'btn wifi-toggle-btn on';
+        mqttBtn.textContent = "MQTT: ON";
+      } else {
+        mqttBtn.className = 'btn wifi-toggle-btn off';
+        mqttBtn.textContent = "MQTT: OFF";
+      }
+    }
+
+  } catch (error) {
+    // Hálózati hiba esetén csendben maradunk
+  }
+}, 2000);
+
+// --- GOMB KLIKK ESEMÉNYEK ---
+
+// WiFi STA Be/Ki gomb
+document.getElementById('sta_enable_toggle').onclick = async () => {
+  const btn = document.getElementById('sta_enable_toggle');
+  const newState = !btn.classList.contains('on');
   await fetch('/api/settings/setStaMode', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -352,13 +381,47 @@ staBtn.onclick = async () => {
   });
 };
 
-function updateWifiBtnUI(enabled) {
-  staBtn.className = `btn wifi-toggle-btn ${enabled ? 'on' : 'off'}`;
-  staBtn.textContent = enabled ? "WiFi: ON" : "WiFi: OFF";
-  staControls.style.display = enabled ? 'block' : 'none';
+// WiFi AP Be/Ki gomb
+if(document.getElementById('toggleApBtn')) {
+    document.getElementById('toggleApBtn').onclick = async () => {
+        const btn = document.getElementById('toggleApBtn');
+        const newState = !btn.classList.contains('on');
+        await fetch('/api/settings/ap_toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: newState })
+        });
+    };
 }
 
-// WiFi Szkennelés és listázás
+// MQTT Be/Ki gomb
+if(document.getElementById('toggleMqttBtn')) {
+    document.getElementById('toggleMqttBtn').onclick = async () => {
+        const btn = document.getElementById('toggleMqttBtn');
+        const newState = !btn.classList.contains('on');
+        await fetch('/api/settings/mqtt_toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: newState })
+        });
+    };
+}
+
+// WiFi Be/Ki gomb kezelése
+document.getElementById('sta_enable_toggle').onclick = async () => {
+  const staBtn = document.getElementById('sta_enable_toggle');
+  const isCurrentlyOn = staBtn.classList.contains('on');
+  const newState = !isCurrentlyOn;
+  
+  // ESP értesítése a váltásról
+  await fetch('/api/settings/setStaMode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: newState })
+  });
+};
+
+// Aszinkron WiFi Szkennelés és listázás
 document.getElementById('scanWifiBtn').onclick = async () => {
   const btn = document.getElementById('scanWifiBtn');
   const list = document.getElementById('wifiList');
@@ -368,46 +431,113 @@ document.getElementById('scanWifiBtn').onclick = async () => {
   list.innerHTML = '<div class="small" style="padding: 15px; text-align: center;">Searching for networks...</div>';
 
   try {
-    const res = await fetch('/api/wifi/scan');
-    const networks = await res.json();
-    list.innerHTML = "";
+    // 1. Szkennelés elindítása
+    await fetch('/api/wifi/scan_start', { method: 'POST' });
 
-    if (networks.length === 0) {
-      list.innerHTML = '<div class="small" style="padding: 15px; text-align: center;">No networks found</div>';
-    } else {
-      networks.forEach(net => {
-        const item = document.createElement('div');
-        item.style = "padding: 10px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between;";
-        item.innerHTML = `
-          <span style="font-size: 13px; font-weight: 500;">${net.ssid}</span>
-          <span class="small">${net.rssi} dBm ${net.secure ? '🔒' : ''}</span>
-        `;
-        item.onclick = () => {
-          // Kiemelés a listában
-          Array.from(list.children).forEach(c => c.style.background = "");
-          item.style.background = "rgba(0, 102, 255, 0.1)";
-          
-          selectedSSID = net.ssid;
-          document.getElementById('selected_ssid_label').textContent = "Selected: " + net.ssid;
-          document.getElementById('wifi_password_area').style.display = 'block';
-        };
-        list.appendChild(item);
-      });
-    }
+    // 2. Pollolás (lekérdezés) amíg be nem fejeződik
+    const pollScan = setInterval(async () => {
+      const res = await fetch('/api/wifi/scan_results');
+      const data = await res.json();
+      
+      if (data.status === 'done') {
+        clearInterval(pollScan); // Leállítjuk a pollingot
+        btn.disabled = false;
+        btn.textContent = "Scan 🔍";
+        list.innerHTML = "";
+
+        if (data.networks.length === 0) {
+          list.innerHTML = '<div class="small" style="padding: 15px; text-align: center;">No networks found</div>';
+        } else {
+          data.networks.forEach(net => {
+            const item = document.createElement('div');
+            item.style = "padding: 10px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between;";
+            item.innerHTML = `
+              <span style="font-size: 13px; font-weight: 500;">${net.ssid}</span>
+              <span class="small">${net.rssi} dBm ${net.secure ? '🔒' : ''}</span>
+            `;
+            item.onclick = () => {
+              // Kiemelés a listában
+              Array.from(list.children).forEach(c => c.style.background = "");
+              item.style.background = "rgba(0, 102, 255, 0.1)";
+              
+              selectedSSID = net.ssid;
+              document.getElementById('selected_ssid_label').textContent = "Selected: " + net.ssid;
+              document.getElementById('wifi_password_area').style.display = 'block';
+            };
+            list.appendChild(item);
+          });
+        }
+      }
+    }, 1500); // 1.5 másodpercenként ellenőrzi, hogy kész-e a szkennelés
+
   } catch (e) {
-    list.innerHTML = '<div class="small" style="padding: 15px; text-align: center; color: red;">Scan failed</div>';
-  } finally {
+    list.innerHTML = '<div class="small" style="padding: 15px; text-align: center; color: red;">Scan request failed</div>';
     btn.disabled = false;
     btn.textContent = "Scan 🔍";
   }
 };
 
-// Csatlakozás gomb
+// Csatlakozás gomb elküldi az adatokat a szervernek (a státusz automatikusan fog frissülni)
 document.getElementById('connectStaBtn').onclick = () => {
   const pass = document.getElementById('set_sta_pass').value;
-  saveSettings('/api/settings/setSta', {
-    sta_ssid: selectedSSID,
-    sta_pass: pass,
-    sta_connect: "connect"
+  
+  document.getElementById('sta_status').textContent = "Connecting...";
+
+  fetch('/api/settings/sta_connect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sta_ssid: selectedSSID,
+      sta_pass: pass
+    })
   });
 };
+
+// Szekvenciális kapcsolás (Delay figyelembevételével)
+async function sequenceRelays(turnOn) {
+  const moduleIds = Object.keys(modulesCache);
+  if (moduleIds.length === 0) {
+    alert("Nincsenek aktív modulok!");
+    return;
+  }
+
+  // Késleltetés másodpercben (alapból 0, ha nincs beállítva), átváltva milliszekundumra
+  const delayMs = (currentSettings.meas_delay ? currentSettings.meas_delay : 0) * 1000;
+  const state = turnOn ? 1 : 0; // 1 = ON, 0 = OFF
+
+  const turnAllOnBtn = document.getElementById('turnAllOnBtn');
+  const turnAllOffBtn = document.getElementById('turnAllOffBtn');
+
+  if (turnAllOnBtn) turnAllOnBtn.disabled = true;
+  if (turnAllOffBtn) turnAllOffBtn.disabled = true;
+
+  for (let i = 0; i < moduleIds.length; i++) {
+    const modId = moduleIds[i];
+
+    try {
+      await fetch(`/api/relay/set?mod=${modId}&relay=0&state=${state}`);
+      // Adatok azonnali frissítése a weboldalon
+      if (typeof fetchOnce === 'function') fetchOnce();
+    } catch (e) {
+      console.error(`Hiba a modul kapcsolásakor: ${modId}`, e);
+    }
+
+    // Csak a bekapcsolásnál (turnOn === true) várakozunk, 
+    // és az utolsó modul után már felesleges várni.
+    if (turnOn && delayMs > 0 && i < moduleIds.length - 1) {
+      // Várakozás a következő bekapcsolásáig
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
+  if (turnAllOnBtn) turnAllOnBtn.disabled = false;
+  if (turnAllOffBtn) turnAllOffBtn.disabled = false;
+}
+
+// Eseménykezelők rákötése a gombokra betöltés után
+document.addEventListener("DOMContentLoaded", () => {
+  const btnOn = document.getElementById('turnAllOnBtn');
+  const btnOff = document.getElementById('turnAllOffBtn');
+  if (btnOn) btnOn.onclick = () => sequenceRelays(true);
+  if (btnOff) btnOff.onclick = () => sequenceRelays(false);
+});

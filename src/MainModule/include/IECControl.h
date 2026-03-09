@@ -93,7 +93,7 @@ class IECControl {
     std::vector<uint8_t> discoverIECs();
 
     float getSumIECCurrentData();       // [A] Get the sum of current data from all IECModuleInfo's local register
-    float getSumIECVoltageData();       // [V] Get the sum of voltage data from all IECModuleInfo's local register
+    float getAvgIECVoltageData();       // [V] Get the sum of voltage data from all IECModuleInfo's local register
     float getSumIECPowerData();         // [W] Get the sum of power
     float getAvgIECFrequencyData();     // [Hz] Get the average of frequency data from all IECModuleInfo's local register
 

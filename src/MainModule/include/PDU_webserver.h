@@ -8,13 +8,14 @@
 #include <EnvironmentSensor.h>
 
 #include <ArduinoJson.h>
-#include "variables.h"     // Elérjük az NVS író/olvasó függvényeket
+#include "variables.h"
+#include <mqttHandler.h> 
 
 class PDU_webserver {
 public:
     PDU_webserver(AsyncWebServer *server, IECControl *iecControl, EnvironmentSensor *envSensor, networkLayerManager *networkLayer);
 
-    void runServer();
+    void runServer(); 
     void broadcastModules();          // WS frissítés
     void setUpdateInterval(uint32_t ms); // IEC frissítési ciklus
 

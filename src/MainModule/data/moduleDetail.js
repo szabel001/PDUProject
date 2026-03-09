@@ -17,6 +17,15 @@ function updateAllModules(arr) {
   }
 }
 
+function updateModuleConfig(arr){
+    arr.forEach(m => upsertModuleConfig(m));
+}
+
+function upsertModuleConfig(m){
+  modulesConfigCache[m.modbus_id] = m;
+}
+
+
 function upsertModule(m) {
   modulesCache[m.modbus_id] = m;
   updateSmallChartData(m);
@@ -49,6 +58,7 @@ function upsertModule(m) {
 
 function openModulePage(id) {
   const m = modulesCache[id];
+  const mConf = modulesConfigCache[id]
   if (!m) return;
 
   document.getElementById('dashboard').style.display = 'none';
@@ -56,7 +66,7 @@ function openModulePage(id) {
   moduleView.classList.add('active');
 
   currentModuleId = id;
-  renderModuleDetail(m);
+  renderModuleDetail(m, mConf);
 }
 
 function showDashboard() {
@@ -67,17 +77,17 @@ function showDashboard() {
 
 // ---------------- DETAIL RENDER ÉS XML EXPORT ----------------
 
-function renderModuleDetail(m) {
+function renderModuleDetail(m, mConf) {
   moduleDetailCard.innerHTML = '';
 
   const html = document.createElement('div');
   html.innerHTML = `
   <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom:15px;">
     <div style="flex: 1; min-width: 150px;">
-      <h3 style="margin:0;">IEC Module #${m.modbus_id}</h3>
-      <div class="small">Firmware: (${m.version || 'v?'})</div>
-      <div class="small">ID: ${m.id}</div>
-      <div class="small">Modbus ID: ${m.modbus_id}</div>
+      <h3 style="margin:0;">IEC Module #${mConf.modbus_id}</h3>
+      <div class="small">Firmware: (${mConf.version || 'v?'})</div>
+      <div class="small">ID: ${mConf.id}</div>
+      <div class="small">Modbus ID: ${mConf.modbus_id}</div>
     </div>
 
     <div style="flex: 2; display:flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border-left: 1px solid rgba(253, 4, 4, 0.05); border-right: 1px solid rgba(0,0,0,0.05);">
@@ -96,16 +106,16 @@ function renderModuleDetail(m) {
       <div class="settings-card" style="margin-top:10px;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">          
           <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:8px;">
-            <li><strong>Available LEDs:</strong> ${m.availableLeds || 'N/A'}</li>
-            <li><strong>Current Limit:</strong> ${m.currentLimit || 'N/A'} A</li>
-            <li><strong>Relay Count:</strong> ${m.relay_count}</li>
+            <li><strong>Available LEDs:</strong> ${mConf.availableLeds || 'N/A'}</li>
+            <li><strong>Current Limit:</strong> ${mConf.currentLimit || 'N/A'} A</li>
+            <li><strong>Relay Count:</strong> ${mConf.relay_count}</li>
           </ul>
           <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:8px;">
-            <li><strong>Voltage Measured:</strong> ${m.isRMSVoltageMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Current Measured:</strong> ${m.isRMSCurrentMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Active Power Measured:</strong> ${m.isActivePowerMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Reactive Power Measured:</strong> ${m.isReactivePowerMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Frequency Measured:</strong> ${m.isACFrequencyMeasured ? 'Yes' : 'No'}</li>
+            <li><strong>Voltage Measured:</strong> ${mConf.isRMSVoltageMeasured ? 'Yes' : 'No'}</li>
+            <li><strong>Current Measured:</strong> ${mConf.isRMSCurrentMeasured ? 'Yes' : 'No'}</li>
+            <li><strong>Active Power Measured:</strong> ${mConf.isActivePowerMeasured ? 'Yes' : 'No'}</li>
+            <li><strong>Reactive Power Measured:</strong> ${mConf.isReactivePowerMeasured ? 'Yes' : 'No'}</li>
+            <li><strong>Frequency Measured:</strong> ${mConf.isACFrequencyMeasured ? 'Yes' : 'No'}</li>
           </ul>
         </div>
       </div>
@@ -127,19 +137,19 @@ function renderModuleDetail(m) {
       
       <div class="chart-header" style="display:flex; gap:10px; align-items: center;">
         <button class="btn ghost chart-toggle" data-target="chart_volt" style="flex-grow: 1; text-align: center; background-color: #67a4ff;">Voltage (V)</button>
-        <button class="btn xml-btn" onclick="exportXML(${m.modbus_id}, 'volt')" style="white-space: nowrap;">⬇ XML Export</button>
+        <button class="btn xml-btn" onclick="exportXML(${mConf.modbus_id}, 'volt')" style="white-space: nowrap;">⬇ XML Export</button>
       </div>
       <canvas id="chart_volt" class="detail-chart"></canvas>
 
       <div class="chart-header" style="display:flex; gap:10px; align-items: center;">
         <button class="btn ghost chart-toggle" data-target="chart_amp" style="flex-grow: 1; text-align: center; background-color: #59fc7d8a">Current (A)</button>
-        <button class="btn xml-btn" onclick="exportXML(${m.modbus_id}, 'amp')" style="white-space: nowrap;">⬇ XML Export</button>
+        <button class="btn xml-btn" onclick="exportXML(${mConf.modbus_id}, 'amp')" style="white-space: nowrap;">⬇ XML Export</button>
       </div>
       <canvas id="chart_amp" class="detail-chart"></canvas>
 
       <div class="chart-header" style="display:flex; gap:10px; align-items: center;">
         <button class="btn ghost chart-toggle" data-target="chart_watt" style="flex-grow: 1; text-align: center; background-color: #f8623449">Power (W)</button>
-        <button class="btn xml-btn" onclick="exportXML(${m.modbus_id}, 'watt')" style="white-space: nowrap;">⬇ XML Export</button>
+        <button class="btn xml-btn" onclick="exportXML(${mConf.modbus_id}, 'watt')" style="white-space: nowrap;">⬇ XML Export</button>
       </div>
       <canvas id="chart_watt" class="detail-chart"></canvas>
     </div>

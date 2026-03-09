@@ -29,15 +29,13 @@ void setup() {
   envSensor->setupEnvironmentSensor();
   webserver = new PDU_webserver(&asyncServer, globalIEC, envSensor, networkLayer);
 
-  setupMQTT(); // ÚJ: MQTT inicializálása
+  setupMQTT();
 
   webserver->runServer(); // Initialize the web server
 
   tftDisplay.setupDisplay(*globalIEC, *networkLayer, *envSensor); // Initialize the TFT display with the IEC control reference
 
 }
-
-uint32_t lastUpdate = 0;
 
 void loop() {
   globalIEC->IECReadLoop(); // Read the IEC power data over modbus
@@ -47,5 +45,6 @@ void loop() {
 
   webserver->broadcastModules();
 
-  handleMQTT(false); // ÚJ: MQTT kezelése
+  networkLayer->handleAsyncTasks();
+  handleMQTT(); 
 }

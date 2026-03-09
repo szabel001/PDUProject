@@ -42,10 +42,21 @@
           Real-time monitoring and intelligent control for your Power Distribution Units.
         </p>
 
-        <div class="hero-actions">
-          <button class="btn" onclick="document.getElementById('iecDashboard').click()">
-            Open IEC Dashboard
-          </button>
+        <div class="metrics" style="justify-content: center; gap: 40px; max-width: 600px; margin: 0 auto 30px auto; background: var(--card); padding: 20px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.06);">
+          <div style="text-align: center;">
+            <span class="small" style="font-size: 14px;">Total Current</span><br>
+            <strong id="total_current" style="font-size: 28px; color: var(--primary);">0.00 A</strong>
+          </div>
+          <div style="text-align: center;">
+            <span class="small" style="font-size: 14px;">Total Apparent Power</span><br>
+            <strong id="total_power" style="font-size: 28px; color: var(--danger);">0.00 W</strong>
+          </div>
+        </div>
+
+        <div class="hero-actions" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+          <button class="btn" onclick="document.getElementById('iecDashboard').click()">Open Dashboard</button>
+          <button class="btn" id="turnAllOnBtn" style="background-color: #00a651;">Turn ALL ON</button>
+          <button class="btn ghost" id="turnAllOffBtn" style="color: #d64545; border-color: #d64545;">Turn ALL OFF</button>
         </div>
       </div>
     </div>
@@ -67,6 +78,22 @@
       <h1 style="text-align: center;">PDU & System Settings</h1>
 
       <div class="settings-column">
+
+        <div class="settings-card">
+          <h3>Measurement Settings</h3>
+          <label>Overcurrent Threshold (OC Threshold - A)</label>
+          <input type="number" id="set_meas_oc" placeholder="16">
+          <label>Temperature Scale</label>
+          <select id="set_meas_temp">
+            <option value="C">Celsius (°C)</option>
+            <option value="F">Fahrenheit (°F)</option>
+          </select>
+          <label>IEC Measurement Cycle Time (s)</label>
+          <input type="number" id="set_meas_cycle" placeholder="1">
+          <label>IEC Switching Delay (s)</label>
+          <input type="number" id="set_meas_delay" placeholder="0">
+          <button class="btn" id="saveMeasBtn">Save Measurements</button>
+        </div>
 
         <div class="settings-card">
           <h3>WiFi STA (Client Mode)</h3>
@@ -99,9 +126,16 @@
         </div>
 
         <div class="settings-card">
-          <h3>WiFi AP (Saját hálózat)</h3>
-          <div class="small" style="margin-bottom:10px; color:#00a651;">Állapot: <span id="ap_status"
-              style="font-weight:bold;">Betöltés...</span></div>
+          <h3>WiFi AP (Local network)</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <span class="small">Status: <strong id="ap_status">Betöltés...</strong></span>
+            <button id="toggleApBtn" class="btn wifi-toggle-btn off">AP: OFF</button>
+          </div>
+          
+          <label>SSID (Név)</label>
+          <input type="text" id="set_ap_ssid" placeholder="PDU_AP">
+          <label>Jelszó (min. 8 karakter)</label>
+          <input type="password" id="set_ap_pass" placeholder="admin1234">
           <label>IP Cím</label>
           <input type="text" id="set_ap_ip" placeholder="192.168.4.1">
           <label>Gateway</label>
@@ -110,8 +144,23 @@
           <input type="text" id="set_ap_sn" placeholder="255.255.255.0">
           <label>DNS</label>
           <input type="text" id="set_ap_dns" placeholder="8.8.8.8">
-          <button id="toggleApBtn" class="btn" style="margin-bottom: 10px;">Betöltés...</button>
-          <button class="btn" id="saveApBtn">Save AP</button>
+          
+          <button class="btn" id="saveApBtn" style="margin-top: 10px;">Save AP</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>MQTT Server</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <span class="small">Status: <strong id="mqtt_status">Betöltés...</strong></span>
+            <button id="toggleMqttBtn" class="btn wifi-toggle-btn off">MQTT: OFF</button>
+          </div>
+          
+          <label>MQTT IP / Hostname</label>
+          <input type="text" id="set_mqtt_ip" placeholder="192.168.1.50">
+          <label>MQTT Port</label>
+          <input type="number" id="set_mqtt_port" placeholder="1883">
+          
+          <button class="btn" id="saveMqttBtn" style="margin-top: 10px;">Save MQTT</button>
         </div>
 
         <div class="settings-card">
@@ -131,33 +180,6 @@
           <input type="text" id="set_eth_dns" placeholder="8.8.8.8">
           <button class="btn" id="saveEthBtn">Save Ethernet</button>
         </div>
-
-        <div class="settings-card">
-          <h3>Measurement Settings</h3>
-          <label>Overcurrent Threshold (OC Threshold - A)</label>
-          <input type="number" id="set_meas_oc" placeholder="16">
-          <label>Temperature Scale</label>
-          <select id="set_meas_temp">
-            <option value="C">Celsius (°C)</option>
-            <option value="F">Fahrenheit (°F)</option>
-          </select>
-          <label>IEC Measurement Cycle Time (s)</label>
-          <input type="number" id="set_meas_cycle" placeholder="1">
-          <label>IEC Switching Delay (s)</label>
-          <input type="number" id="set_meas_delay" placeholder="0">
-          <button class="btn" id="saveMeasBtn">Save Measurements</button>
-        </div>
-
-        <div class="settings-card">
-          <h3>MQTT Server</h3>
-          <label>MQTT IP / Hostname</label>
-          <input type="text" id="set_mqtt_ip" placeholder="192.168.1.50">
-          <label>MQTT Port</label>
-          <input type="number" id="set_mqtt_port" placeholder="1883">
-          <button id="toggleMqttBtn" class="btn" style="margin-bottom: 10px;">Betöltés...</button>
-          <button class="btn" id="saveMqttBtn">Save MQTT</button>
-        </div>
-
       </div>
     </div>
 

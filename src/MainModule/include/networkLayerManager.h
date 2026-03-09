@@ -25,12 +25,31 @@ class networkLayerManager {
   public:
   networkLayerManager(){}
   void initInternetProtocol();
-  void setupAPWifi(bool status);
 
-  String scanNetworksJSON();
+  void scanNetworksJSON();
+
+  String getScannedNetworksJSON();
+  void startScanning();
+  bool isScanning();
+  bool isConnecting();
+  bool startConnecting();
+  String _scannedNetwork = "";
+  bool _startScanning = false;
+  bool _startConnecting = false;
+
+  void handleAsyncTasks();           // Ezt a main.cpp loop-jába kell tenni
+  void startAsyncScan();             // Aszinkron szkennelés indítása
+  bool isScanComplete();             // Ellenőrzi, befejeződött-e a szkennelés
+  String getScanResultsJSON();       // Visszaadja a szkennelés eredményét JSON-ben
+  
+  String getSTAStatusString();       // Visszaadja a státusz szöveget (Disabled, Disconnected, Connecting..., Connected)
+  bool getSTAEnabled();              // Lekérdezi, hogy be van-e kapcsolva a WiFi STA mód
+  void setSTAEnabled(bool enabled);  // Ki/Be kapcsolja a WiFi STA módot
+  void connectSTA(String ssid, String pass); // Csatlakozás indítása
 
   bool getWifiSTA_Status();
   bool setWifiSTA_Status(bool status);
+  bool checkSTAConnection();
   void configureWifiSTA_SSID(String ssid);
   void configureWifiSTA_Password(String password);
   void configureWifiSTA_IP(IPAddress ip);
@@ -69,6 +88,10 @@ class networkLayerManager {
   bool _networkStatus;                   //
   bool WiFiSTAStatus;
   bool WiFiAPStatus;
+
+  bool _staEnabled = false;
+  bool _isScanningMode = false;
+  String _scanJSON = "[]";
 
   float _currentData;                    //
 

@@ -81,9 +81,6 @@ void TFTDisplay::setupMenu() {
   int settingsId = addMenu("Settings", mainId);
   addMenuItem(mainId, MenuItem("Settings", MenuActionType::NAVIGATE, settingsId));
   buildNetworkingMenu(settingsId);
-  //int pduModbusId = addMenu("PDU Modbus", settingsId);
-  //addMenuItem(settingsId, MenuItem("PDU Modbus", MenuActionType::NAVIGATE, pduModbusId));
-  //addMenuItem(pduModbusId, MenuItem("Set Modbus Address", MenuActionType::CALLBACK, -1, [this](){ /* set modbus address */ }));
   int measuringId = addMenu("Measuring", settingsId);
   addMenuItem(settingsId, MenuItem("Measuring Settings", MenuActionType::NAVIGATE, measuringId));
   addMenuItem(measuringId, MenuItem("Temp. scale", MenuActionType::CALLBACK, -1, [this, measuringId](){ 
@@ -144,9 +141,13 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
   // Create networking subtree
   int wifiId = addMenu("WiFi Settings", settingsMenuId);
   int ethId = addMenu("Ethernet Settings", settingsMenuId);
+  int mqttId = addMenu("MQTT Settings", settingsMenuId);
+
 
   addMenuItem(settingsMenuId, MenuItem("Wifi", MenuActionType::NAVIGATE, wifiId));
   addMenuItem(settingsMenuId, MenuItem("Ethernet", MenuActionType::NAVIGATE, ethId));
+  addMenuItem(settingsMenuId, MenuItem("MQTT", MenuActionType::NAVIGATE, mqttId));
+
 
   addMenuItem(wifiId, MenuItem("View WiFi STA config", MenuActionType::CALLBACK, -1,
       [this]() {
@@ -171,7 +172,7 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
       }));
 
   addMenuItem(wifiId, MenuItem("Set WiFi AP status:", MenuActionType::CALLBACK, -1, [this, wifiId](){ 
-    _networkMgr->setupAPWifi(!_networkMgr->getWiFiAP_Status());
+    _networkMgr->setWifiAP_Status(!_networkMgr->getWiFiAP_Status());
     getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAP_Status() ? "[ON]" : "[OFF]";
     drawMenuWindow();
   }));getMenuById(wifiId)->items.back().value = _networkMgr->getWiFiAP_Status() ? "[ON]" : "[OFF]";
@@ -191,6 +192,15 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId) {
           String dns = readStringFromNVS(NVSKeys::ETHERNET_DNS, "");
           drawDataViewScreen("Ethernet Config", { "IP: " + ip, "Gateway: " + gateway, "Subnet: " + subnet, "DNS: " + dns });
       }));
+
+    // --- ÚJ: MQTT menüpontok ---
+  addMenuItem(mqttId, MenuItem("Toggle MQTT:", MenuActionType::CALLBACK, -1, [this, mqttId](){ 
+    bool currentState = isMQTTEnabled();
+    writeIntToNVS(NVSKeys::MQTT_ENA, !currentState ? 1 : 0);
+    drawMenuWindow();
+  }));
+  addMenuItem(mqttId, MenuItem("Status:", MenuActionType::NONE));
+  addMenuItem(mqttId, MenuItem("Server IP:", MenuActionType::NONE));
 }
 
 void TFTDisplay::setupDisplay(IECControl& iec, networkLayerManager& networkMgr, EnvironmentSensor& envSensor) {
@@ -281,75 +291,80 @@ void IRAM_ATTR TFTDisplay::isr_handleConfirm() { if(_instance && _instance->inte
 
 void TFTDisplay::processButton() {
   if(UpPressed){
-    if (editing) {
-        editor.nextInt();
-        drawEditorScreen();
-        UpPressed = false;
-        return;
+    UpPressed = false; // Rögtön töröljük a flaget
+    if (digitalRead(BTN_UP) == LOW) { // Zajszűrés: Tényleg le van nyomva?
+      if (editing) {
+          editor.nextInt();
+          drawEditorScreen();
+          return;
+      }
+      if(currentSelection > 0) currentSelection--;
     }
-    if(currentSelection>0) currentSelection--;
-    UpPressed = false;
   }
 
   if(DownPressed){
-    if (editing) {
-        editor.prevInt();
-        drawEditorScreen();
-        DownPressed = false;
-        return;
+    DownPressed = false; // Rögtön töröljük a flaget
+    if (digitalRead(BTN_DOWN) == LOW) { // Zajszűrés: Tényleg le van nyomva?
+      if (editing) {
+          editor.prevInt();
+          drawEditorScreen();
+          return;
+      }
+      int mIdx = findMenuIndexById(currentMenuId);
+      if (mIdx >= 0) {
+        if(currentSelection < (int)menus[mIdx].items.size()-1) currentSelection++;
+      }
     }
-    int mIdx = findMenuIndexById(currentMenuId);
-    if (mIdx >= 0) {
-      if(currentSelection < (int)menus[mIdx].items.size()-1) currentSelection++;
-    }
-    DownPressed = false;
   }
 
   if(BackPressed){
-    int mIdx = findMenuIndexById(currentMenuId);
-    if (mIdx >= 0 && menus[mIdx].parentId >= 0 && !editing && !dataview) {
-      currentMenuId = menus[mIdx].parentId;
-      currentSelection=0;
-      windowStart=0;
-      lastSelection=-1;
-    }
-    editing = false;
-    dataview = false;
     BackPressed = false;
-    drawMenuWindow();
+    if (digitalRead(BTN_BACK) == LOW) {
+      int mIdx = findMenuIndexById(currentMenuId);
+      if (mIdx >= 0 && menus[mIdx].parentId >= 0 && !editing && !dataview) {
+        currentMenuId = menus[mIdx].parentId;
+        currentSelection=0;
+        windowStart=0;
+        lastSelection=-1;
+      }
+      editing = false;
+      dataview = false;
+      drawMenuWindow();
+    }
   }
 
   if(ConfirmPressed){
-    if (editing) {
-      if (editorSaveCallback) {
-        editorSaveCallback(editor.get());
-      }
-      editorSaveCallback = nullptr;
-      editing = false;
-      drawSavedSuccessScreen();
-      drawMenuWindow();
-      ConfirmPressed = false;
-      return;
-    }
-
-    int idx = findMenuIndexById(currentMenuId);
-    if (idx < 0) return;
-    if (currentSelection < 0 || currentSelection >= (int)menus[idx].items.size()) return;
-    MenuItem &it = menus[idx].items[currentSelection];
-
-    if (it.actionType == MenuActionType::NAVIGATE && !editing) {
-      if (it.targetMenuId >= 0) {
-        currentMenuId = it.targetMenuId;
-        currentSelection = 0;
-        windowStart = 0;
-        lastSelection = -1;
-        if (it.cb) it.cb();  // callback can change currentMenuId} 
-        drawMenuWindow();
-      }
-    } else if (it.actionType == MenuActionType::CALLBACK) {
-      if (it.cb && !editing) it.cb();
-    }
     ConfirmPressed = false;
+    if (digitalRead(BTN_CONFIRM) == LOW) {
+      if (editing) {
+        if (editorSaveCallback) {
+          editorSaveCallback(editor.get());
+        }
+        editorSaveCallback = nullptr;
+        editing = false;
+        drawSavedSuccessScreen();
+        drawMenuWindow();
+        return;
+      }
+
+      int idx = findMenuIndexById(currentMenuId);
+      if (idx < 0) return;
+      if (currentSelection < 0 || currentSelection >= (int)menus[idx].items.size()) return;
+      MenuItem &it = menus[idx].items[currentSelection];
+
+      if (it.actionType == MenuActionType::NAVIGATE && !editing) {
+        if (it.targetMenuId >= 0) {
+          currentMenuId = it.targetMenuId;
+          currentSelection = 0;
+          windowStart = 0;
+          lastSelection = -1;
+          if (it.cb) it.cb();  
+          drawMenuWindow();
+        }
+      } else if (it.actionType == MenuActionType::CALLBACK) {
+        if (it.cb && !editing) it.cb();
+      }
+    }
   }
 }
 
@@ -486,6 +501,14 @@ void TFTDisplay::updateMenuValues() {
         // stub: replace with real aht10 calls
         m.items[0].value = "--" + String(( _envSensor->isFahrenheit()) ? "`F" : "`C");
         m.items[1].value = "-- %";
+      }
+    }
+
+    if (String(m.title) == "MQTT Settings") {
+      if (m.items.size() >= 3) {
+        m.items[0].value = isMQTTEnabled() ? "[ON]" : "[OFF]";
+        m.items[1].value = getMQTTStatusString();
+        m.items[2].value = readStringFromNVS(NVSKeys::MQTT_SERVER, "Not set");
       }
     }
   }
