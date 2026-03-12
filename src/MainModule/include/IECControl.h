@@ -85,7 +85,7 @@ class IECControl {
     void collectIECModuleInfos();
 
     IECStatus getIECStatus(uint8_t id);
-    void setpowerDataUpdateCycleTime(uint16_t cycleTime);  // Set the global cycle time for the power data acquisition 
+    void setpowerDataUpdateCycleTime(uint16_t cycleTime);  // Set the global cycle time for the power data acquisition
 
     uint16_t powerDataUpdateCycleTime = 1; // [sec]
 
@@ -99,11 +99,9 @@ class IECControl {
 
     void setAllIecRelaysOff(); // Set all IEC module relays off
     void setAllIecRelaysOn();  // Set all IEC module relays on
-
-    void setDelayedTurnOnTimeO(uint16_t delayTime);  // Set the given IEC module relay on after delay time
-    uint16_t getDelayedTurnOnTime();  // Get the given IEC module relay on delay time
-    void setDelayedTurnOffTime(uint16_t delayTime); // Set the given IEC module
-    uint16_t getDelayedTurnOffTime(); // Get the given IEC module relay off delay time
+    void setIECSwitchingDelay(uint16_t delay);
+    void setAllIecRelayStatus(bool status);
+    uint16_t getIECSwitchingDelay();
 
 private:
     bool _isIECCommunicate(uint8_t id);
@@ -156,5 +154,7 @@ private:
     std::map<uint8_t, IECModuleInfo> _iecModules;
     std::vector<uint8_t> _foundIECIDs; // Vector to store discovered slave IDs
     unsigned long _startMillis_powerRead;
+
+    uint16_t _IECSwitchingDelay = 0;
 };
 #endif

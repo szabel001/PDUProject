@@ -10,7 +10,7 @@ void EnvironmentSensor::setupEnvironmentSensor() {
 }
 
 void EnvironmentSensor::setTemperatureScale(bool setfahrenheit) {
-  ensureNVSString(NVSKeys::MEAS_TEMP, setfahrenheit == true ? "F" : "C");
+  writeStringToNVS(NVSKeys::MEAS_TEMP, setfahrenheit == true ? "F" : "C");
 }
 
 bool EnvironmentSensor::isFahrenheit() {

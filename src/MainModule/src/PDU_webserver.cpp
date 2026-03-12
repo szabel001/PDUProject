@@ -28,7 +28,6 @@ void PDU_webserver::setUpdateInterval(uint32_t sec) {
     if(sec > 60) sec = 60;
     
     updateInterval = sec * 1000; // A webszerver (millis) ms-ban számol, ezért * 1000
-    writeIntToNVS(NVSKeys::MEAS_CYCLE, sec);
     iec->setpowerDataUpdateCycleTime(sec); // Az IECControl másodpercet vár, így ez marad sec
 }
 
@@ -384,7 +383,7 @@ void PDU_webserver::runServer() {
             obj["version"] = iec->getIECVersion(id);
             obj["relay_count"] = iec->getIECRelayCount(id);
 
-            obj["overcurrent"] = iec->getOverCurrentTreshold();
+            obj["curr_error"] = iec->getOverCurrentTreshold();
             obj["curr_warning"] = iec->getCurrWarningLimit(id);
 
             obj["availableLeds"] = iec->getIEC_AVAILABLE_LEDS(id);
@@ -497,13 +496,8 @@ void PDU_webserver::runServer() {
                     if (doc.containsKey("warn")) {
                         iec->setCurrWarningLimit(modId, doc["warn"].as<float>());
                     }
-                    if (doc.containsKey("oc")) {
-                        iec->setOverCurrentTreshold(modId, doc["oc"].as<float>());
-                    }
-                    if (doc.containsKey("delay")) {
-                        // Itt feltételezzük, hogy van ilyen hívás az IECControl-ban vagy NVS-ben
-                        // Ha globális a késleltetés:
-                        writeIntToNVS(NVSKeys::MEAS_DELAY, doc["delay"].as<int>());
+                    if (doc.containsKey("err")) {
+                        iec->setOverCurrentTreshold(modId, doc["err"].as<float>());
                     }
 
                     Serial.printf("IEC Module %d settings updated\n", modId);

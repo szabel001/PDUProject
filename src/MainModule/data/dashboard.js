@@ -69,12 +69,9 @@ function openIecSettings(id) {
         <div class="settings-card">
             <label>Warning Current Limit (A)</label>
             <input type="number" id="iec_warn_limit" value="${m.curr_warning || ''}">
-            <label>Overcurrent Threshold (A)</label>
-            <input type="number" id="iec_oc_threshold" value="${m.overcurrent || ''}">
-            <label>Switching Delay (s)</label>
-            <input type="number" id="iec_delay" value="${m.meas_delay || 0}">
+            <label>Error Current Limit (A)</label>
+            <input type="number" id="iec_err_limit" value="${m.curr_error || ''}">
             <button class="btn" onclick="saveIecModuleSettings(${id})">Save IEC Settings</button>
-            <button class="btn ghost" onclick="showDashboard()">Back</button>
         </div>
     `;
 }

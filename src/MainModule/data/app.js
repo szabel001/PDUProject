@@ -74,18 +74,23 @@ async function fetchOnce() {
   try {
     const res = await fetch('/api/data');
     const data = await res.json();
-    
+
     // Szumma mezők frissítése a backend adatai alapján
     const tcEl = document.getElementById('total_current');
     const tpEl = document.getElementById('total_power');
-    if (tcEl && data.total_current !== undefined) tcEl.textContent = data.total_current.toFixed(2) + ' A';
-    if (tpEl && data.total_power !== undefined) tpEl.textContent = data.total_power.toFixed(2) + ' W';
-
+    if ((tcEl && data.total_current !== undefined) && (tpEl && data.total_power !== undefined)) {
+      tcEl.textContent = data.total_current.toFixed(2) + ' A';
+      tpEl.textContent = data.total_power.toFixed(2) + ' W';
+      return;
+    }
     // Modulok betöltése az új formátumból (vagy a régiből, ha cache-ből jön)
     const modulesArr = data.modules ? data.modules : data;
-    
     updateAllModules(modulesArr);
     updateModuleConfig(modulesArr);
+    
+    if(document.getElementById('iec_warn_limit')) document.getElementById('iec_warn_limit').value = data.curr_warning || '';
+    if(document.getElementById('iec_err_limit')) document.getElementById('iec_err_limit').value = data.curr_error || '';
+
   } catch (e) {
     console.error('Fetch /api/data failed', e);
     connStatusEl.textContent = 'API error';

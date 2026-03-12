@@ -58,7 +58,8 @@ function upsertModule(m) {
 
 function openModulePage(id) {
   const m = modulesCache[id];
-  const mConf = modulesConfigCache[id]
+  const mConf = modulesConfigCache[id] || m; 
+
   if (!m) return;
 
   document.getElementById('dashboard').style.display = 'none';
@@ -344,14 +345,12 @@ async function toggleRelay(modId, relayIdx, btn = null) {
 
 async function saveIecModuleSettings(modId) {
   const warningLimit = document.getElementById('iec_warn_limit').value;
-  const ocThreshold = document.getElementById('iec_oc_threshold').value;
-  const delay = document.getElementById('iec_delay').value;
+  const errorLimit = document.getElementById('iec_err_limit').value;
 
   const payload = {
     mod: modId,
     warn: parseFloat(warningLimit),
-    oc: parseFloat(ocThreshold),
-    delay: parseInt(delay)
+    err: parseFloat(errorLimit),
   };
 
   console.log("Saving IEC Module settings:", payload);

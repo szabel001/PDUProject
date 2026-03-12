@@ -84,19 +84,16 @@ bool IECControl::setRelayStatus(uint8_t id, bool status) {
   return true;
 }
 
-void IECControl::setCurrWarningLimit(uint8_t id, float level)
-{
+void IECControl::setCurrWarningLimit(uint8_t id, float level){
   _writeCustCurrWarningLimit(id, level);
 }
 
-void IECControl::setOverCurrentTreshold(uint8_t id, float level)
-{
+void IECControl::setOverCurrentTreshold(uint8_t id, float level) {
     writeIntToNVS(NVSKeys::MEAS_OC, level);
     _writeCustCurrWarningLimit(id, level);
 }
 
-uint16_t IECControl::getOverCurrentTreshold()
-{
+uint16_t IECControl::getOverCurrentTreshold() {
     return readIntFromNVS(NVSKeys::MEAS_OC, 0);
 }
 
@@ -107,6 +104,32 @@ uint16_t IECControl::getPowerDataUpdateCycleTime() {
 void IECControl::setpowerDataUpdateCycleTime(uint16_t cycleTime) {
   powerDataUpdateCycleTime = cycleTime;
   writeIntToNVS(NVSKeys::MEAS_CYCLE, cycleTime);
+}
+
+void IECControl::setIECSwitchingDelay(uint16_t delay) {
+  _IECSwitchingDelay = delay;
+  writeIntToNVS(NVSKeys::MEAS_DELAY, delay);
+}
+
+void IECControl::setAllIecRelayStatus(bool status) {
+  if (_foundIECIDs.empty()) return;
+  uint32_t delayMs = readIntFromNVS(NVSKeys::MEAS_DELAY, 0) * 1000;
+  for (auto& module : _iecModules) {
+    setRelayStatus(module.first, status);
+    if (delayMs > 0) delay(delayMs);
+  }
+}
+
+void IECControl::setAllIecRelaysOn() {
+    setAllIecRelayStatus(true);
+}
+
+void IECControl::setAllIecRelaysOff() {
+    setAllIecRelayStatus(false);
+}
+
+uint16_t IECControl::getIECSwitchingDelay(){
+  return readIntFromNVS(NVSKeys::MEAS_DELAY, 0);
 }
 
 //==========================================================//
