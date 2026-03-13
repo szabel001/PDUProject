@@ -165,13 +165,19 @@ int main(void)
   Input_Registers_Database[AVAILABLE_LEDS_ADDR] = Config_Params->AVAILABLE_LEDS;
 
   Input_Registers_Database[CURRENT_LIMIT_ADDR] = Config_Params->CURRENT_LIMIT;
-  Input_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR] = Config_Params->CURRENT_LIMIT * 0.8;
   prevCustCurrWarningLimit = Config_Params->CURRENT_LIMIT;
   prevCustCurrErrorLimit = Config_Params->CURRENT_LIMIT * 0.8;
   Input_Registers_Database[RELAY_COUNT_ADDR] = Config_Params->RELAY_COUNT;
   MODBUS_ID = Config_Params->MODBUS_ID;
 
-  Holding_Registers_Database[MEAS_AVG_NUM_ADDR] = 10;
+  Input_Registers_Database[RELAY_COUNT_ADDR] = Config_Params->RELAY_COUNT;
+  MODBUS_ID = Config_Params->MODBUS_ID;
+
+	// Float-ként inicializáljuk az alapértékeket!
+   addFloatToRegister(Holding_Registers_Database, MEAS_AVG_NUM_ADDR, 10.0f);
+   addFloatToRegister(Holding_Registers_Database, CUSTCURR_WARNING_LIMIT_ADDR, (float)Config_Params->CURRENT_LIMIT * 0.8f);
+   addFloatToRegister(Holding_Registers_Database, CUSTCURR_ERROR_LIMIT_ADDR, (float)Config_Params->CURRENT_LIMIT);
+   addFloatToRegister(Holding_Registers_Database, OC_TRESHOLD_ADDR, (float)Config_Params->CURRENT_LIMIT * 1.2f);
 
   /* USER CODE END 2 */
 

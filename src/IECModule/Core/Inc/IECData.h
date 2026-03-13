@@ -7,14 +7,18 @@
 #define NUM_COILS 256
 #define NUM_DISCRETEINPUTS 256
 
+enum IECStatus;
+
 void readCurrentData(ADC_HandleTypeDef* hadc);
 void readPowerData(ADC_HandleTypeDef* hadc);
 void readVoltageData();
 uint8_t setRelayStatus(uint8_t prevRelayState);
-void setRelayStatusLed(uint8_t status);
+void setGreenStatusLed(uint8_t status);
+void setRedStatusLed(uint8_t status);
 void setCustCurrWarningLimit();
 void setCustCurrErrorLimit();
 void addFloatToRegister(uint16_t *reg, uint8_t dataStart, float addedFloat);
 float convertIEEE754ToFloat(uint32_t hex);
+void setStatus(uint8_t status);
 
 extern float actualCurrent;

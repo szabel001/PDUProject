@@ -12,6 +12,27 @@
   Toggle végpont: /api/toggle?mod=<id>&relay=<r>
 */
 
+// --- Status formázó függvények ---
+function getStatusText(code) {
+  switch(code) {
+    case 0: return "OK";
+    case 1: return "Warning (Current)";
+    case 2: return "Error (Current)";
+    case 3: return "Over Threshold";
+    default: return "Unknown";
+  }
+}
+
+function getStatusColor(code) {
+  switch(code) {
+    case 0: return "var(--ok)";
+    case 1: return "orange";
+    case 2: return "red";
+    case 3: return "darkred";
+    default: return "var(--muted)";
+  }
+}
+
 const MAX_POINTS = 60;            // grafikon pontok száma
 let modulesCache = {};            // modbus_id -> modul objektum
 let modulesConfigCache = {};      // modbus_id config -> modul objektum

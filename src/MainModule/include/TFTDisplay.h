@@ -46,17 +46,17 @@ public:
   void drawEditorScreen();
   void drawDataViewScreen(const String &title, const std::vector<String> &dataLines);
   void setupMenu();
-  void drawSaveButton(bool selected);
-  void processButtonEditing();
   void processButton();
-  void handleConfirmButton();
-  void updateIECDetailMenus(int id);
+  void updateIECValues(int id);
   void updateActiveMenuPeriodic();
   void updateDynamicValues();
   void drawMenuWindow();
-  void updateMenuValues();
+  void updateIECDetailMenus(int id);
+  void updateSystemValues();
   void drawSavedSuccessScreen();
   void updateCursor();
+
+  static int getXOffset(String menuTitle);
 
   private:
   std::vector<Menu> menus;

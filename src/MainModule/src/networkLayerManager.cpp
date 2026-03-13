@@ -66,7 +66,7 @@ void networkLayerManager::initInternetProtocol() {
 ///-------------------------------- Wi-Fi AP mode setup -----------------------------------------
 ///----------------------------------------------------------------------------------------------
 
-bool networkLayerManager::getWiFiAP_Status() {
+bool networkLayerManager::getWifiAP_Status() {
   return WiFiAPStatus;
 }
 

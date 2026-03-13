@@ -1,10 +1,10 @@
 #include "IECData.h"
 
-
-enum IECStatus{
-	STANDBY,
-	NORMAL,
-	FAULT,
+enum IECStatus {
+ noError = 0,
+ currentWarning = 1,
+ currentError = 2,
+ currentOverTreshold = 3,
 };
 
 float adcToCurrent(int adc)
@@ -35,9 +35,15 @@ float adcToCurrent(int adc)
 void readCurrentData(ADC_HandleTypeDef* hadc)
 {
     uint32_t sum = 0;
-    uint16_t samples = Holding_Registers_Database[MEAS_AVG_NUM_ADDR];
-    if(samples == 0)
-        samples = 1;   // védelem 0 osztás ellen
+
+    // Float konvertálása a 2 regiszterből az átlagoláshoz
+    uint32_t avgHex = (Holding_Registers_Database[MEAS_AVG_NUM_ADDR] << 16) | Holding_Registers_Database[MEAS_AVG_NUM_ADDR+1];
+    float avgFloat = convertIEEE754ToFloat(avgHex);
+    uint16_t samples = (uint16_t)avgFloat;
+
+    // Védelem nulla osztás ellen, vagy ha még nem jött adat az ESP-től
+    if(samples == 0 || samples > 1000) samples = 10;
+
     for(uint16_t i = 0; i < samples; i++)
     {
         HAL_ADC_Start(hadc);
@@ -50,6 +56,29 @@ void readCurrentData(ADC_HandleTypeDef* hadc)
     float avgRaw = (float)sum / samples;
     actualCurrent = adcToCurrent(avgRaw);
     addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, actualCurrent);
+
+    // Limitek Float-ként való kiolvasása a regiszterekből
+    float oc_thresh = convertIEEE754ToFloat((Holding_Registers_Database[OC_TRESHOLD_ADDR] << 16) | Holding_Registers_Database[OC_TRESHOLD_ADDR+1]);
+    float err_lim   = convertIEEE754ToFloat((Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR] << 16) | Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR+1]);
+    float warn_lim  = convertIEEE754ToFloat((Holding_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR] << 16) | Holding_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR+1]);
+
+    if (actualCurrent > oc_thresh) {
+        setStatus(currentOverTreshold);
+        setRelayStatus(0);
+        setRedStatusLed(1);
+    }
+    else if (actualCurrent > err_lim) {
+        setStatus(currentError);
+        setRedStatusLed(1);
+    }
+    else if (actualCurrent > warn_lim){
+        setStatus(currentWarning);
+        setRedStatusLed(0);
+    }
+    else {
+        setStatus(noError);
+        setRedStatusLed(0);
+    }
 }
 
 void readVoltageData(){
@@ -66,21 +95,25 @@ void readPowerData(ADC_HandleTypeDef* hadc){
 	addFloatToRegister(Input_Registers_Database, APPARENT_POWER_ADDR, powerData);
 }
 
-uint8_t setRelayStatus(uint8_t prevRelayState){
-	if(prevRelayState != Coils_Database[RELAY_STATE_ADDR]) {
+uint8_t setRelayStatus(uint8_t relayState){
+	if(relayState != Coils_Database[RELAY_STATE_ADDR]) {
 		HAL_GPIO_WritePin(RELAY_CTRL_GPIO_Port, RELAY_CTRL_Pin, Coils_Database[RELAY_STATE_ADDR]);
-		setRelayStatusLed(Coils_Database[RELAY_STATE_ADDR]);
+		setGreenStatusLed(Coils_Database[RELAY_STATE_ADDR]);
 		return Coils_Database[RELAY_STATE_ADDR];
 	}
-	return prevRelayState;
+	return relayState;
 }
 
 void setStatus(uint8_t status){
-	Input_Registers_Database[IEC_STATUS_ADDR] = status;
+	if (status != Input_Registers_Database[IEC_STATUS_ADDR]) Input_Registers_Database[IEC_STATUS_ADDR] = status;
 }
 
-void setRelayStatusLed(uint8_t status){
+void setGreenStatusLed(uint8_t status){
 	HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, status);
+}
+
+void setRedStatusLed(uint8_t status){
+	HAL_GPIO_WritePin(RED_LED_GPIO_Port, RED_LED_Pin, status);
 }
 
 void addFloatToRegister(uint16_t *reg, uint8_t dataStart, float addedFloat){

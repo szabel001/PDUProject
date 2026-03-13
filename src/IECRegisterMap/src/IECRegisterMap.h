@@ -33,9 +33,9 @@
 /*
 -------------Holding registers---------------
 */
-#define HOLDING_REGISTER_POWER_DATA_UPDATE_CYCLE_TIME_ADDR 0x0000 // 
-#define CUSTCURR_LIMIT_ADDR 0x0002 //
-#define CUSTCURR_WARNING_LIMIT_ADDR 0x0004 //
-#define MEAS_AVG_NUM_ADDR 0x0006 //
+#define MEAS_AVG_NUM_ADDR 0x0000 // 
+#define CUSTCURR_WARNING_LIMIT_ADDR 0x0002 //
+#define CUSTCURR_ERROR_LIMIT_ADDR 0x0004 //
+#define OC_TRESHOLD_ADDR 0x0006 //
 
 #endif

@@ -20,7 +20,10 @@ function renderDashboard() {
         <div class="card-header">
           <div>
             <h2>Module #${m.modbus_id}</h2>
-            <div class="small">FW ${m.version || '—'}</div>
+            <div class="small">Firmware: ${m.version || '—'}</div>
+            <div class="small" style="font-weight: 600; margin-top: 2px;">
+              Status: <span class="mod-status" style="color: ${getStatusColor(m.status)};">${getStatusText(m.status)}</span>
+            </div>
           </div>
         </div>
 
@@ -68,9 +71,14 @@ function openIecSettings(id) {
         <h2>IEC Settings - Module #${id}</h2>
         <div class="settings-card">
             <label>Warning Current Limit (A)</label>
-            <input type="number" id="iec_warn_limit" value="${m.curr_warning || ''}">
+            <input type="number" id="iec_warn_limit" value="${m.curr_warning !== undefined ? m.curr_warning : ''}">
+            
             <label>Error Current Limit (A)</label>
-            <input type="number" id="iec_err_limit" value="${m.curr_error || ''}">
+            <input type="number" id="iec_err_limit" value="${m.curr_error !== undefined ? m.curr_error : ''}">
+            
+            <label>Measuring Average Points</label>
+            <input type="number" id="iec_avg_num" value="${m.meas_avg_num !== undefined ? m.meas_avg_num : ''}">
+            
             <button class="btn" onclick="saveIecModuleSettings(${id})">Save IEC Settings</button>
         </div>
     `;
@@ -92,6 +100,13 @@ function updateModuleCard(m) {
   const toggleBtn = card.querySelector('.toggleBtn');
   toggleBtn.textContent = relayState;
   toggleBtn.className = `btn toggleBtn ${isRelayOn ? 'relay-on' : 'relay-off'}`;
+
+  // Status frissítése valós időben
+  const statusSpan = card.querySelector('.mod-status');
+  if (statusSpan) {
+    statusSpan.textContent = getStatusText(m.status);
+    statusSpan.style.color = getStatusColor(m.status);
+  }
 }
 
 // -------- MINI CHART --------

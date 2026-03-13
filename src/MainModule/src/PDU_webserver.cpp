@@ -60,6 +60,11 @@ void PDU_webserver::broadcastModules() {
         obj["current"] = iec->getRMSCurrentData(id);
         obj["power"] = iec->getApparentPowerData(id);
         obj["version"] = iec->getIECVersion(id);
+
+        obj["status"] = (int)iec->getIECStatus(id);
+        obj["curr_error"] = iec->getCustCurrErrorLimit(id);
+        obj["curr_warning"] = iec->getCustCurrWarningLimit(id);
+        obj["meas_avg_num"] = iec->getIECAVGNum(id);
         
         int rcount = iec->getIECRelayCount(id);
         obj["relay_count"] = rcount;
@@ -383,8 +388,10 @@ void PDU_webserver::runServer() {
             obj["version"] = iec->getIECVersion(id);
             obj["relay_count"] = iec->getIECRelayCount(id);
 
-            obj["curr_error"] = iec->getOverCurrentTreshold();
-            obj["curr_warning"] = iec->getCurrWarningLimit(id);
+            obj["curr_error"] = iec->getCustCurrErrorLimit(id);
+            obj["curr_warning"] = iec->getCustCurrWarningLimit(id);
+            obj["meas_avg_num"] = iec->getIECAVGNum(id);
+            obj["status"] = (int)iec->getIECStatus(id);
 
             obj["availableLeds"] = iec->getIEC_AVAILABLE_LEDS(id);
             obj["currentLimit"] = iec->getIECCurrentLimit(id);
@@ -437,7 +444,7 @@ void PDU_webserver::runServer() {
     // ==========================================
     webServer->on("/api/settings/ap_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
-        bool apActive = _networkLayer->getWiFiAP_Status();
+        bool apActive = _networkLayer->getWifiAP_Status();
         doc["enabled"] = apActive;
         if (apActive) {
             doc["status"] = "Enabled (" + String(WiFi.softAPgetStationNum()) + " clients)";
@@ -463,8 +470,8 @@ void PDU_webserver::runServer() {
     // ==========================================
     webServer->on("/api/settings/mqtt_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
-        doc["enabled"] = isMQTTEnabled();
-        doc["status"] = getMQTTStatusString();
+        doc["enabled"] = mqttManager->isMQTTEnabled();
+        doc["status"] = mqttManager->getMQTTStatusString();
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
@@ -492,13 +499,17 @@ void PDU_webserver::runServer() {
                 if (!error && doc.containsKey("mod")) {
                     uint8_t modId = doc["mod"];
                     
-                    // Értékek beállítása az IECControl-on keresztül
+            // --- CSERÉLD LE A BEÁLLÍTÓ RÉSZT ERRE: ---
                     if (doc.containsKey("warn")) {
-                        iec->setCurrWarningLimit(modId, doc["warn"].as<float>());
+                        iec->setCustCurrWarningLimit(modId, doc["warn"].as<float>());
                     }
                     if (doc.containsKey("err")) {
-                        iec->setOverCurrentTreshold(modId, doc["err"].as<float>());
+                        iec->setCustCurrErrorLimit(modId, doc["err"].as<float>());
                     }
+                    if (doc.containsKey("avg")) {
+                        iec->setIECAVGNum(modId, doc["avg"].as<uint8_t>());
+                    }
+
 
                     Serial.printf("IEC Module %d settings updated\n", modId);
                     request->send(200, "application/json", "{\"ok\":true}");
@@ -524,6 +535,12 @@ void PDU_webserver::runServer() {
         }
     });
     webServer->addHandler(&ws);
+
+    // Szerver indítása
+    // --- 404 Hibakezelő ---
+    webServer->onNotFound([](AsyncWebServerRequest *request){
+        request->send(404, "text/plain", "404: Not found");
+    });
 
     // Szerver indítása
     webServer->begin();

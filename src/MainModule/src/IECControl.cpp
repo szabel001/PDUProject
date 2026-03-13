@@ -71,26 +71,27 @@ bool IECControl::setRelayStatus(uint8_t id, bool status) {
     _debugString = "ID: " + String(id) + " " + errorStrings[_error] + " with a value of: " + String(status);
     Serial.println(_debugString);
   #endif
-  if(getRelayStatus(id) == status) {
-    #ifdef DEBUG
-      Serial.println("Relay status set successfully.");
-    #endif
-  } else {
-    #ifdef DEBUG
-      Serial.println("Failed to set relay status.");
-    #endif
-    return false;
-  }
-  return true;
+  return getRelayStatus(id) == status;
 }
 
-void IECControl::setCurrWarningLimit(uint8_t id, float level){
+bool IECControl::setIECAVGNum(uint8_t id, uint8_t value) {
+  _writeIECAVGNum(id, value);
+  return getIECAVGNum(id) == value;
+}
+
+bool IECControl::setCustCurrWarningLimit(uint8_t id, float level){
   _writeCustCurrWarningLimit(id, level);
+  return getCustCurrWarningLimit(id) == level;
+}
+
+bool IECControl::setCustCurrErrorLimit(uint8_t id, float level){
+  _writeCustCurrErrorLimit(id, level);
+  return getCustCurrErrorLimit(id) == level;
 }
 
 void IECControl::setOverCurrentTreshold(uint8_t id, float level) {
     writeIntToNVS(NVSKeys::MEAS_OC, level);
-    _writeCustCurrWarningLimit(id, level);
+    for (auto& module : _iecModules) _writeOCTreshold(module.first, level);
 }
 
 uint16_t IECControl::getOverCurrentTreshold() {
@@ -257,9 +258,19 @@ uint16_t IECControl::getIECRelayStatus(uint8_t id)
     return _getIntDataFromInputRegister(id, RELAY_STATE_ADDR);
 }
 
-float IECControl::getCurrWarningLimit(uint8_t id)
+float IECControl::getCustCurrWarningLimit(uint8_t id)
 {
     return _getFloatDataFromInputRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
+}
+
+float IECControl::getCustCurrErrorLimit(uint8_t id)
+{
+    return _getFloatDataFromInputRegister(id, CUSTCURR_ERROR_LIMIT_ADDR);
+}
+
+float IECControl::getIECAVGNum(uint8_t id)
+{
+    return _getFloatDataFromInputRegister(id, MEAS_AVG_NUM_ADDR);
 }
 
 bool IECControl::getRelayStatus(uint8_t id) {
@@ -307,6 +318,11 @@ float IECControl::getPowerFactorData(uint8_t id) {
 
 float IECControl::_getFloatDataFromInputRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
   uint32_t x = (_iecModules[id].inputRegisters[startOfData] << 16) + _iecModules[id].inputRegisters[startOfData + 1];
+  return *(float*)&x;
+}
+
+float IECControl::_getFloatDataFromHoldingRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
+  uint32_t x = (_iecModules[id].holdingRegisters[startOfData] << 16) + _iecModules[id].holdingRegisters[startOfData + 1];
   return *(float*)&x;
 }
 
@@ -400,7 +416,7 @@ void IECControl::_readIECCapabilities(uint8_t id) {
   _readIEC_IS_AC_FREQUENCY_MEASURED(id);
 }
 
-void IECControl::_readIECStatus(uint8_t id) { //TODO shall be implemented in the future as real status reading, return an IECStatus enum
+void IECControl::_readIECStatus(uint8_t id) {
   _readIECUINT16InputRegister(id, IEC_STATUS_ADDR);
 }
 
@@ -459,6 +475,22 @@ void IECControl::_readIECFloatInputRegister(uint16_t id, uint16_t startOfData) {
   else {
     _iecModules[id].inputRegisters[startOfData] = buffer[0];
     _iecModules[id].inputRegisters[startOfData + 1] = buffer[1];
+  }
+}
+
+void IECControl::_readIECFloatHoldingRegister(uint16_t id, uint16_t startOfData) { //Read float data from IEC module and stores it to the IEC's input register array
+  uint16_t buffer[2];
+  ModbusRTUMasterError _error = _mbMaster.readHoldingRegisters(id, startOfData, buffer, 2);
+
+  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
+    #ifdef DEBUG
+      _debugString = "ID: " + String(id) + " " + errorStrings[_error];
+      Serial.println(_debugString);
+    #endif
+  }
+  else {
+    _iecModules[id].holdingRegisters[startOfData] = buffer[0];
+    _iecModules[id].holdingRegisters[startOfData + 1] = buffer[1];
   }
 }
 
@@ -541,18 +573,50 @@ void IECControl::_readIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id) { //Read the rela
 }
 
 void IECControl::_readCustCurrWarningLimit(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECFloatInputRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
+  _readIECFloatHoldingRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
 }
+
+void IECControl::_readCustCurrErrorLimit(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECFloatHoldingRegister(id, CUSTCURR_ERROR_LIMIT_ADDR);
+}
+
+void IECControl::_readIECAVGNum(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECFloatHoldingRegister(id, MEAS_AVG_NUM_ADDR);
+}
+
 
 void IECControl::_writeCustCurrWarningLimit(uint8_t id, float value) { //Read the relay status from the given slave ID over
   uint16_t buffer[2];
   floatToIEEE754Registers(value, buffer);
   ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, CUSTCURR_WARNING_LIMIT_ADDR, buffer, 2);
   if (_error != MODBUS_RTU_MASTER_SUCCESS) {
-    #ifdef DEBUG
-      _debugString = "ID: " + String(id) + " " + errorStrings[_error];
-      Serial.println(_debugString);
-    #endif
+    _readCustCurrWarningLimit(id);
+  }
+}
+
+void IECControl::_writeCustCurrErrorLimit(uint8_t id, float value) { //Read the relay status from the given slave ID over
+  uint16_t buffer[2];
+  floatToIEEE754Registers(value, buffer);
+  ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, CUSTCURR_ERROR_LIMIT_ADDR, buffer, 2);
+  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
+    _readCustCurrWarningLimit(id);
+  }
+}
+
+void IECControl::_writeOCTreshold(uint8_t id, float value) { //Read the relay status from the given slave ID over
+  uint16_t buffer[2];
+  floatToIEEE754Registers(value, buffer);
+  ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, OC_TRESHOLD_ADDR, buffer, 2);
+  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
+    _readCustCurrWarningLimit(id);
+  }
+}
+
+void IECControl::_writeIECAVGNum(uint8_t id, uint8_t value) { //Read the relay status from the given slave ID over
+  uint16_t buffer[2];
+  floatToIEEE754Registers(value, buffer);
+  ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, MEAS_AVG_NUM_ADDR, buffer, 2);
+  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
     _readCustCurrWarningLimit(id);
   }
 }

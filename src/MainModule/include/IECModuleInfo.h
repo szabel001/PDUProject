@@ -21,10 +21,10 @@ enum ledStates {                //collect which type of LEDs are available on th
  };
 
  enum IECStatus {              // collect the status of the IEC module:
-  noError = 0,     // no error
-  error = 1,       // error
-  warning = 2,     // warning
-  info = 3,        // info
+  noError = 0,
+  currentWarning = 1,
+  currentError = 2,
+  currentOverTreshold = 3,
  };
 
 enum currentLimit {             // collect which current limit is available on the IEC module:

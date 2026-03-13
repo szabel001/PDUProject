@@ -87,6 +87,9 @@ function renderModuleDetail(m, mConf) {
     <div style="flex: 1; min-width: 150px;">
       <h3 style="margin:0;">IEC Module #${mConf.modbus_id}</h3>
       <div class="small">Firmware: (${mConf.version || 'v?'})</div>
+      <div class="small" style="font-weight: 600; margin-top: 2px;">
+        Status: <span id="detail_status_val" style="color: ${getStatusColor(m.status)};">${getStatusText(m.status)}</span>
+      </div>
       <div class="small">ID: ${mConf.id}</div>
       <div class="small">Modbus ID: ${mConf.modbus_id}</div>
     </div>
@@ -248,6 +251,12 @@ function updateDetailMetrics(m) {
       relayBtn.className = `btn toggleBtn ${isRelayOn ? 'relay-on' : 'relay-off'}`;
     }
   }
+  // Státusz frissítése
+  const statEl = document.getElementById('detail_status_val');
+  if (statEl) {
+    statEl.textContent = getStatusText(m.status);
+    statEl.style.color = getStatusColor(m.status);
+  }
 }
 
 function addDetailPoint(id, t, v, a, p) {
@@ -330,10 +339,19 @@ async function toggleRelay(modId, relayIdx, btn = null) {
 
   if (btn) { btn.disabled = true; }
 
+  // 1. Jelenlegi állapot lekérése a cache-ből és invertálása
+  const m = modulesCache[modId];
+  let newState = 0; // Alapértelmezett kikapcsolás
+  if (m && m.relays && m.relays.length > relayIdx) {
+    newState = m.relays[relayIdx] ? 0 : 1; // Ha 1 volt, 0 lesz, és fordítva
+  }
+
   try {
-    const res = await fetch(`/api/toggle?mod=${modId}&relay=${relayIdx}`, { method: 'GET' });
+    // 2. A HELYES C++ backend végpont meghívása
+    const res = await fetch(`/api/relay/set?mod=${modId}&relay=${relayIdx}&state=${newState}`, { method: 'GET' });
+    
     if (!res.ok) {
-      await fetch(`/api/module/${modId}/relay/${relayIdx}/toggle`);
+        console.error("Hiba a relé kapcsolásakor, szerver válasz:", res.status);
     }
     setTimeout(() => typeof fetchOnce === 'function' ? fetchOnce() : null, 150);
   } catch (e) {
@@ -346,11 +364,13 @@ async function toggleRelay(modId, relayIdx, btn = null) {
 async function saveIecModuleSettings(modId) {
   const warningLimit = document.getElementById('iec_warn_limit').value;
   const errorLimit = document.getElementById('iec_err_limit').value;
+  const avgNum = document.getElementById('iec_avg_num').value;
 
   const payload = {
     mod: modId,
     warn: parseFloat(warningLimit),
     err: parseFloat(errorLimit),
+    avg: parseInt(avgNum)
   };
 
   console.log("Saving IEC Module settings:", payload);

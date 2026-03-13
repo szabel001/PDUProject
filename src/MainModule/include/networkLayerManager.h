@@ -11,6 +11,7 @@
 #include <variables.h>
 #include <debug.h>
 #include <ArduinoJson.h>
+#include <mqttHandler.h>
 
 IPAddress convertStringToIPAddress(const String& str);
 String convertIPAddressToString(IPAddress ip);
@@ -57,7 +58,7 @@ class networkLayerManager {
   void configureWifiSTA_Subnet(IPAddress subnet);
   void configureWifiSTA_DNS(IPAddress dnsIP);
 
-  bool getWiFiAP_Status();
+  bool getWifiAP_Status();
   bool setWifiAP_Status(bool status);
   void configureWifiAP_SSID(String ssid);
   void configureWifiAP_Password(String password);
@@ -75,7 +76,6 @@ class networkLayerManager {
   void setEthernet_Subnet(IPAddress subnet);
   void setEthernet_DNS(IPAddress dnsIP);
   void configureEthernet();
-  void configureEthernet(uint8_t ip[], uint8_t gateway[], uint8_t subnet[]);
 
   bool getNetworkStatus();
 

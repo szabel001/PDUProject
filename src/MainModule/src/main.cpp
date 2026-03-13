@@ -16,6 +16,7 @@ networkLayerManager* networkLayer;
 PDU_webserver* webserver;
 TFTDisplay tftDisplay;
 EnvironmentSensor* envSensor;
+MqttHandler* mqttManager;
 
 void setup() {
   Serial.begin(115200);
@@ -29,7 +30,9 @@ void setup() {
   envSensor->setupEnvironmentSensor();
   webserver = new PDU_webserver(&asyncServer, globalIEC, envSensor, networkLayer);
 
-  setupMQTT();
+  // MQTT példányosítása és setup
+  mqttManager = new MqttHandler(globalIEC);
+  mqttManager->setupMQTT();
 
   webserver->runServer(); // Initialize the web server
 
@@ -46,5 +49,5 @@ void loop() {
   webserver->broadcastModules();
 
   networkLayer->handleAsyncTasks();
-  handleMQTT(); 
+  mqttManager->handleMQTT();
 }
