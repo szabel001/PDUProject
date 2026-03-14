@@ -24,6 +24,9 @@
 #include "modbusSlave.h"
 #include "IECData.h"
 #include "config_params.h"
+#include "stm32g0xx_hal.h"
+#include <string.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,6 +41,9 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+// Az utolsó, 30-es számú lap kezdőcíme (64KB-os G030 esetén)
+
+#define SETTINGS_FLASH_ADDR 0x0800E000
 
 /* USER CODE END PM */
 
@@ -73,9 +79,19 @@ uint8_t prevCustCurrErrorLimit;
 
 float actualCurrent;
 
+typedef struct {
+    int   meas_avg_num;
+    float custcurr_warning_limit;
+    float custcurr_error_limit;
+    float overcurrent_treshold;
+} AppSettings_t;
+
+AppSettings_t IECSettings;
+uint8_t UpdateDataReceived = 0;
+
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-	if (RxData[0] == MODBUS_ID)
+	if (RxData[0] == Config_Params->MODBUS_ID)
 	{
 		switch (RxData[1]){
 		case 0x03:
@@ -95,6 +111,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 			break;
 		case 0x10:
 			writeHoldingRegs();
+			UpdateDataReceived = 1;
 			break;
 		case 0x05:
 			writeSingleCoil();
@@ -108,6 +125,51 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 		}
 	}
 	HAL_UARTEx_ReceiveToIdle_IT(&huart1, RxData, 256);
+}
+
+HAL_StatusTypeDef Flash_SaveSettings(AppSettings_t *settings)
+{
+    HAL_StatusTypeDef status;
+
+    HAL_FLASH_Unlock();
+
+    FLASH_EraseInitTypeDef erase;
+    uint32_t pageError;
+
+    erase.TypeErase = FLASH_TYPEERASE_PAGES;
+    erase.Page      = (SETTINGS_FLASH_ADDR - FLASH_BASE) / FLASH_PAGE_SIZE;
+    erase.NbPages   = 1;
+
+    status = HAL_FLASHEx_Erase(&erase, &pageError);
+    if(status != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return status;
+    }
+
+    uint64_t *data = (uint64_t*)settings;
+    uint32_t address = SETTINGS_FLASH_ADDR;
+
+    for(int i = 0; i < sizeof(AppSettings_t)/8; i++)
+    {
+        status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address, data[i]);
+        if(status != HAL_OK)
+        {
+            HAL_FLASH_Lock();
+            return status;
+        }
+
+        address += 8;
+    }
+
+    HAL_FLASH_Lock();
+
+    return HAL_OK;
+}
+
+void Flash_LoadSettings(AppSettings_t *settings)
+{
+    memcpy(settings, (void*)SETTINGS_FLASH_ADDR, sizeof(AppSettings_t));
 }
 
 /* USER CODE END 0 */
@@ -165,26 +227,40 @@ int main(void)
   Input_Registers_Database[AVAILABLE_LEDS_ADDR] = Config_Params->AVAILABLE_LEDS;
 
   Input_Registers_Database[CURRENT_LIMIT_ADDR] = Config_Params->CURRENT_LIMIT;
-  prevCustCurrWarningLimit = Config_Params->CURRENT_LIMIT;
-  prevCustCurrErrorLimit = Config_Params->CURRENT_LIMIT * 0.8;
-  Input_Registers_Database[RELAY_COUNT_ADDR] = Config_Params->RELAY_COUNT;
-  MODBUS_ID = Config_Params->MODBUS_ID;
-
   Input_Registers_Database[RELAY_COUNT_ADDR] = Config_Params->RELAY_COUNT;
   MODBUS_ID = Config_Params->MODBUS_ID;
 
 	// Float-ként inicializáljuk az alapértékeket!
-   addFloatToRegister(Holding_Registers_Database, MEAS_AVG_NUM_ADDR, 10.0f);
-   addFloatToRegister(Holding_Registers_Database, CUSTCURR_WARNING_LIMIT_ADDR, (float)Config_Params->CURRENT_LIMIT * 0.8f);
+   addFloatToRegister(Holding_Registers_Database, MEAS_AVG_NUM_ADDR, 10.0);
+   addFloatToRegister(Holding_Registers_Database, CUSTCURR_WARNING_LIMIT_ADDR, (float)Config_Params->CURRENT_LIMIT);
    addFloatToRegister(Holding_Registers_Database, CUSTCURR_ERROR_LIMIT_ADDR, (float)Config_Params->CURRENT_LIMIT);
-   addFloatToRegister(Holding_Registers_Database, OC_TRESHOLD_ADDR, (float)Config_Params->CURRENT_LIMIT * 1.2f);
+   addFloatToRegister(Holding_Registers_Database, OC_TRESHOLD_ADDR, (float)Config_Params->CURRENT_LIMIT);
 
+   Flash_LoadSettings(&IECSettings);
+
+   // 2. Ellenőrizzük, hogy üres-e a Flash.
+   if (IECSettings.meas_avg_num == 0xFFFFFFFF) {
+	   float currLim = (float)Config_Params->CURRENT_LIMIT;
+	   IECSettings.meas_avg_num = 10.0;
+	   IECSettings.custcurr_warning_limit = currLim;
+	   IECSettings.custcurr_error_limit = currLim;
+	   IECSettings.overcurrent_treshold = currLim;
+	   Flash_SaveSettings(&IECSettings);
+   }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if (UpdateDataReceived) {
+				  IECSettings.meas_avg_num = Holding_Registers_Database[MEAS_AVG_NUM_ADDR];
+				  IECSettings.custcurr_warning_limit = Holding_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR];
+				  IECSettings.custcurr_error_limit = Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR];
+				  IECSettings.overcurrent_treshold = Holding_Registers_Database[OC_TRESHOLD_ADDR];
+				  //Flash_SaveSettings(&IECSettings);
+	             UpdateDataReceived = 0;
+	         }
 		readCurrentData(&hadc1);
 		readVoltageData();
 		readPowerData(&hadc1);

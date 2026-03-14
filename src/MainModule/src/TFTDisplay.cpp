@@ -603,9 +603,9 @@ void TFTDisplay::updateIECValues(int id)
     if (String(m.title) == "IEC Status") {
       m.items.clear();
       addMenuItem(m.id, MenuItem("Status:", MenuActionType::NONE)); m.items.back().value = String(_iec->getIECStatus(id));
-      addMenuItem(m.id, MenuItem("Current:", MenuActionType::NONE)); m.items.back().value = String(_iec->getRMSCurrentData(id)) + "A";
-      addMenuItem(m.id, MenuItem("Voltage:", MenuActionType::NONE)); m.items.back().value = String(_iec->getRMSVoltageData(id)) + "V";
-      addMenuItem(m.id, MenuItem("Power:", MenuActionType::NONE)); m.items.back().value = String(_iec->getApparentPowerData(id)) + "W";
+      addMenuItem(m.id, MenuItem("RMS Curr.:", MenuActionType::NONE)); m.items.back().value = String(_iec->getRMSCurrentData(id)) + "A";
+      addMenuItem(m.id, MenuItem("RMS Volt.:", MenuActionType::NONE)); m.items.back().value = String(_iec->getRMSVoltageData(id)) + "V";
+      addMenuItem(m.id, MenuItem("App. Power:", MenuActionType::NONE)); m.items.back().value = String(_iec->getApparentPowerData(id)) + "VA";
       // Relay toggler
       addMenuItem(m.id, MenuItem("Relay:", MenuActionType::CALLBACK, -1, [this, id](){
         _iec->setRelayStatus(id, !_iec->getIECRelayStatus(id));
@@ -648,7 +648,7 @@ void TFTDisplay::updateSystemValues()
     {
       m.items[2].value = String(_iec->getSumIECCurrentData()) + "A";
       m.items[3].value = String(_iec->getAvgIECVoltageData()) + "V";
-      m.items[4].value = String(_iec->getSumIECPowerData()) + "W";
+      m.items[4].value = String(_iec->getSumIECPowerData()) + "VA";
       m.items[5].value = String(_iec->getOverCurrentTreshold()) + "A";
       m.items[6].value = "0.0.1";
     }

@@ -3,7 +3,7 @@
   --card: #ffffff;
   --muted: #6b7280;
   --text: #0f172a;
-  --primary: #0066ff;
+  --primary:#000286;
   --ok: #00a651;
   --danger: #d64545;
 }
@@ -13,7 +13,7 @@ body.dark {
   --card: #0f1724;
   --muted: #9aa4b2;
   --text: #e6eef8;
-  --primary: #4ea3ff;
+  --primary: #000286;
 }
 
 /*header*/
@@ -21,6 +21,8 @@ html,
 body {
   height: 100%;
   margin: 0;
+  padding-top: 30px;
+  box-sizing: border-box;
   font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -33,9 +35,13 @@ header {
   padding: 14px 18px;
   background: var(--card);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  position: sticky;
+  
+  position: fixed; 
   top: 0;
-  z-index: 20
+  left: 0; 
+  width: 100%; 
+  box-sizing: border-box; 
+  z-index: 100;
 }
 
 .brand {
@@ -67,12 +73,11 @@ h1 {
   align-items: center
 }
 
-/* style.css módosítása */
 .btn {
   background: var(--primary);
   color: #fff;
   padding: 10px 16px;
-  border-radius: 10px; /* Modernebb, kerekebb forma */
+  border-radius: 5px;
   border: 0;
   cursor: pointer;
   font-weight: 600;
@@ -82,12 +87,12 @@ h1 {
 }
 
 .btn:hover {
-  background: #2478ff; /* Kicsit sötétebb kék lebegéskor */
+  background: #2478ff;
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .btn:active {
-  transform: scale(0.98); /* Benyomódás effekt */
+  transform: scale(0.95);
 }
 
 .ghost {
@@ -212,14 +217,17 @@ footer {
 }
 
 .sideBar {
-  height: 100%;
+  height: calc(100% - 64px);
   width: 200px;
   font-size: 16px;
   margin: 0;
+  
   position: fixed;
-  z-index: 1;
+  top: 64px;
+  left: 0;  
+  z-index: 10;
 
-  background-color: #ffffff;
+  background-color: var(--card);
   overflow-x: hidden;
   padding-top: 30px;
 }
@@ -228,12 +236,12 @@ footer {
   padding: 10px 10px 6px 32px;
   text-decoration: none;
   font-size: 20px;
-  color: #262626;
+  color: var(--text); /* Fix szürke helyett a dinamikus szövegszín */
   display: block;
 }
 
 .sideBar a:hover {
-  color: #1100ff;
+  color: var(--primary); /* Fix kék helyett a téma elsődleges (primary) színe */
 }
 
 .main {
@@ -390,6 +398,7 @@ footer {
 
 .metrics {
   display:flex;
+  flex-wrap: wrap;
   justify-content:space-between;
   margin-bottom: 15px;
 }

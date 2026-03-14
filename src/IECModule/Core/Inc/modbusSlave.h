@@ -12,8 +12,7 @@
 #include "stm32g0xx_hal.h"
 #include "main.h"
 #include "IECData.h"
-
-#define SLAVE_ID 1
+#include "config_params.h"
 
 #define ILLEGAL_FUNCTION       0x01
 #define ILLEGAL_DATA_ADDRESS   0x02

@@ -1,17 +1,3 @@
-// Fallback polling if WS not available
-
-/*
-  Feltételezett WS message formátum (JSON):
-  {
-    type: "full" | "update" | "module",
-    modules: [ { modbus_id:1, id:..., voltage:..., current:..., power:..., relays:[true,false], version:"", relay_count:2, ... }, ... ],
-    module: { ... } // ha type === "module"
-  }
-
-  Ha nincs websocket a szerveren, a client fallbackre poll-ol (GET /api/data).
-  Toggle végpont: /api/toggle?mod=<id>&relay=<r>
-*/
-
 // --- Status formázó függvények ---
 function getStatusText(code) {
   switch(code) {
@@ -33,11 +19,11 @@ function getStatusColor(code) {
   }
 }
 
-const MAX_POINTS = 60;            // grafikon pontok száma
-let modulesCache = {};            // modbus_id -> modul objektum
-let modulesConfigCache = {};      // modbus_id config -> modul objektum
-let chartsSmall = {};             // kártya mini chartok
-let chartsDetail = {};            // modul oldal nagy chartok
+const MAX_POINTS = 60;
+let modulesCache = {};
+let modulesConfigCache = {};
+let chartsSmall = {};
+let chartsDetail = {};
 let ws = null;
 let wsReconnectInterval = 2000;
 let connected = false;
@@ -96,15 +82,16 @@ async function fetchOnce() {
     const res = await fetch('/api/data');
     const data = await res.json();
 
-    // Szumma mezők frissítése a backend adatai alapján
     const tcEl = document.getElementById('total_current');
     const tpEl = document.getElementById('total_power');
-    if ((tcEl && data.total_current !== undefined) && (tpEl && data.total_power !== undefined)) {
+    const teEl = document.getElementById('total_energy');
+
+    if ((tcEl && data.total_current !== undefined) && (tpEl && data.total_power !== undefined) && (teEl && data.total_energy !== undefined)) {
       tcEl.textContent = data.total_current.toFixed(2) + ' A';
-      tpEl.textContent = data.total_power.toFixed(2) + ' W';
-      return;
+      tpEl.textContent = data.total_power.toFixed(2) + ' VA';
+      teEl.textContent = data.total_energy.toFixed(4) + ' kVAh';
     }
-    // Modulok betöltése az új formátumból (vagy a régiből, ha cache-ből jön)
+
     const modulesArr = data.modules ? data.modules : data;
     updateAllModules(modulesArr);
     updateModuleConfig(modulesArr);
@@ -184,14 +171,17 @@ function initWebSocket() {
 
 // Handle WS messages
 function handleWsMessage(msg) {
-  // ÚJ: Szumma frissítése, ha megérkezett a backendtől a websocketen
   if (msg.total_current !== undefined) {
      const tcEl = document.getElementById('total_current');
      if (tcEl) tcEl.textContent = msg.total_current.toFixed(2) + ' A';
   }
   if (msg.total_power !== undefined) {
      const tpEl = document.getElementById('total_power');
-     if (tpEl) tpEl.textContent = msg.total_power.toFixed(2) + ' W';
+     if (tpEl) tpEl.textContent = msg.total_power.toFixed(2) + ' VA';
+  }
+    if (msg.total_energy !== undefined) {
+     const teEl = document.getElementById('total_energy');
+     if (teEl) teEl.textContent = msg.total_energy.toFixed(4) + ' kVAh';
   }
 
   // Modulok frissítése
@@ -288,14 +278,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // MEASURING MENTÉS
+// MEASURING MENTÉS
   if(document.getElementById('saveMeasBtn')) {
-    document.getElementById('saveMeasBtn').onclick = () => saveSettings('/api/settings/setMeas', {
-      meas_oc: Number(document.getElementById('set_meas_oc').value),
-      meas_temp: document.getElementById('set_meas_temp').value,
-      meas_cycle: Number(document.getElementById('set_meas_cycle').value),
-      meas_delay: Number(document.getElementById('set_meas_delay').value)
-    });
+    document.getElementById('saveMeasBtn').onclick = () => {
+      // 1. Frissítjük a memóriában lévő változót, amit a "Turn ALL ON/OFF" gomb használ
+      currentSettings.meas_delay = Number(document.getElementById('set_meas_delay').value);
+
+      // 2. Elküldjük a backendnek az új értékeket
+      saveSettings('/api/settings/setMeas', {
+        meas_oc: Number(document.getElementById('set_meas_oc').value),
+        meas_temp: document.getElementById('set_meas_temp').value,
+        meas_cycle: Number(document.getElementById('set_meas_cycle').value),
+        meas_delay: currentSettings.meas_delay
+      });
+    };
   }
 
   // MQTT MENTÉS
@@ -308,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function saveSettings(url, payload) {
-  console.log("Send to:", url, "Data:", payload); // Debug info
+  console.log("Send to:", url, "Data:", payload); 
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -316,11 +312,11 @@ async function saveSettings(url, payload) {
       body: JSON.stringify(payload)
     });
     
-    const result = await res.json(); // Válasz megvárása
-    console.log("Response:", result); // Debug info
-    console.log("HTTP status:", res.status, "OK?", res.ok); // Debug info
-    console.log("API response 'ok' field:", result.ok); // Debug info
-    console.log("API response 'error' field:", result.error); // Debug info
+    const result = await res.json();
+    console.log("Response:", result);
+    console.log("HTTP status:", res.status, "OK?", res.ok); 
+    console.log("API response 'ok' field:", result.ok); 
+    console.log("API response 'error' field:", result.error); 
     if (res.ok && result.ok) {
       alert("Settings has been saved successfully!");
     } else {
@@ -334,10 +330,10 @@ async function saveSettings(url, payload) {
 
 let selectedSSID = "";
 
-// Rendszeres állapot lekérdezés a szervertől (STA, AP, MQTT)
+// Regular status query from the server (STA, AP, MQTT)
 setInterval(async () => {
   const staStatusEl = document.getElementById('sta_status');
-  if (!staStatusEl) return; // Ha nem a settings oldalon vagyunk, ne fusson feleslegesen
+  if (!staStatusEl) return;
 
   try {
     // --- STA STATUS ---
@@ -389,14 +385,11 @@ setInterval(async () => {
       }
     }
 
-  } catch (error) {
-    // Hálózati hiba esetén csendben maradunk
-  }
+  } catch (error) {}
 }, 2000);
 
-// --- GOMB KLIKK ESEMÉNYEK ---
-
-// WiFi STA Be/Ki gomb
+// --- BTN CLICK EVENTS ---
+// WiFi STA ONOFF
 document.getElementById('sta_enable_toggle').onclick = async () => {
   const btn = document.getElementById('sta_enable_toggle');
   const newState = !btn.classList.contains('on');
@@ -407,7 +400,7 @@ document.getElementById('sta_enable_toggle').onclick = async () => {
   });
 };
 
-// WiFi AP Be/Ki gomb
+// WiFi AP ONOFF
 if(document.getElementById('toggleApBtn')) {
     document.getElementById('toggleApBtn').onclick = async () => {
         const btn = document.getElementById('toggleApBtn');
@@ -420,7 +413,7 @@ if(document.getElementById('toggleApBtn')) {
     };
 }
 
-// MQTT Be/Ki gomb
+// MQTT ONOFF
 if(document.getElementById('toggleMqttBtn')) {
     document.getElementById('toggleMqttBtn').onclick = async () => {
         const btn = document.getElementById('toggleMqttBtn');
@@ -433,13 +426,11 @@ if(document.getElementById('toggleMqttBtn')) {
     };
 }
 
-// WiFi Be/Ki gomb kezelése
+// WiFi ONOFF
 document.getElementById('sta_enable_toggle').onclick = async () => {
   const staBtn = document.getElementById('sta_enable_toggle');
   const isCurrentlyOn = staBtn.classList.contains('on');
   const newState = !isCurrentlyOn;
-  
-  // ESP értesítése a váltásról
   await fetch('/api/settings/setStaMode', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -447,7 +438,7 @@ document.getElementById('sta_enable_toggle').onclick = async () => {
   });
 };
 
-// Aszinkron WiFi Szkennelés és listázás
+// Async WiFi Scan
 document.getElementById('scanWifiBtn').onclick = async () => {
   const btn = document.getElementById('scanWifiBtn');
   const list = document.getElementById('wifiList');
@@ -457,16 +448,16 @@ document.getElementById('scanWifiBtn').onclick = async () => {
   list.innerHTML = '<div class="small" style="padding: 15px; text-align: center;">Searching for networks...</div>';
 
   try {
-    // 1. Szkennelés elindítása
+    // 1. Start scanning
     await fetch('/api/wifi/scan_start', { method: 'POST' });
 
-    // 2. Pollolás (lekérdezés) amíg be nem fejeződik
+    // 2. Polling
     const pollScan = setInterval(async () => {
       const res = await fetch('/api/wifi/scan_results');
       const data = await res.json();
       
       if (data.status === 'done') {
-        clearInterval(pollScan); // Leállítjuk a pollingot
+        clearInterval(pollScan);
         btn.disabled = false;
         btn.textContent = "Scan 🔍";
         list.innerHTML = "";
@@ -482,7 +473,6 @@ document.getElementById('scanWifiBtn').onclick = async () => {
               <span class="small">${net.rssi} dBm ${net.secure ? '🔒' : ''}</span>
             `;
             item.onclick = () => {
-              // Kiemelés a listában
               Array.from(list.children).forEach(c => c.style.background = "");
               item.style.background = "rgba(0, 102, 255, 0.1)";
               
@@ -494,7 +484,7 @@ document.getElementById('scanWifiBtn').onclick = async () => {
           });
         }
       }
-    }, 1500); // 1.5 másodpercenként ellenőrzi, hogy kész-e a szkennelés
+    }, 500);
 
   } catch (e) {
     list.innerHTML = '<div class="small" style="padding: 15px; text-align: center; color: red;">Scan request failed</div>';
@@ -503,7 +493,6 @@ document.getElementById('scanWifiBtn').onclick = async () => {
   }
 };
 
-// Csatlakozás gomb elküldi az adatokat a szervernek (a státusz automatikusan fog frissülni)
 document.getElementById('connectStaBtn').onclick = () => {
   const pass = document.getElementById('set_sta_pass').value;
   
@@ -519,17 +508,14 @@ document.getElementById('connectStaBtn').onclick = () => {
   });
 };
 
-// Szekvenciális kapcsolás (Delay figyelembevételével)
+// Sequential switching (including delay)
 async function sequenceRelays(turnOn) {
   const moduleIds = Object.keys(modulesCache);
   if (moduleIds.length === 0) {
-    alert("Nincsenek aktív modulok!");
+    alert("No modules connected!");
     return;
   }
-
-  // Késleltetés másodpercben (alapból 0, ha nincs beállítva), átváltva milliszekundumra
-  const delayMs = (currentSettings.meas_delay ? currentSettings.meas_delay : 0) * 1000;
-  const state = turnOn ? 1 : 0; // 1 = ON, 0 = OFF
+  const state = turnOn ? 1 : 0;
 
   const turnAllOnBtn = document.getElementById('turnAllOnBtn');
   const turnAllOffBtn = document.getElementById('turnAllOffBtn');
@@ -537,30 +523,17 @@ async function sequenceRelays(turnOn) {
   if (turnAllOnBtn) turnAllOnBtn.disabled = true;
   if (turnAllOffBtn) turnAllOffBtn.disabled = true;
 
-  for (let i = 0; i < moduleIds.length; i++) {
-    const modId = moduleIds[i];
-
-    try {
-      await fetch(`/api/relay/set?mod=${modId}&relay=0&state=${state}`);
-      // Adatok azonnali frissítése a weboldalon
-      if (typeof fetchOnce === 'function') fetchOnce();
-    } catch (e) {
-      console.error(`Hiba a modul kapcsolásakor: ${modId}`, e);
-    }
-
-    // Csak a bekapcsolásnál (turnOn === true) várakozunk, 
-    // és az utolsó modul után már felesleges várni.
-    if (turnOn && delayMs > 0 && i < moduleIds.length - 1) {
-      // Várakozás a következő bekapcsolásáig
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
+  try {
+    await fetch(`/api/relay/setall?state=${state}`);
+    if (typeof fetchOnce === 'function') fetchOnce();
+  } catch (e) {
+    console.error(`Error during setting relay state: ${modId}`, e);
   }
 
   if (turnAllOnBtn) turnAllOnBtn.disabled = false;
   if (turnAllOffBtn) turnAllOffBtn.disabled = false;
 }
 
-// Eseménykezelők rákötése a gombokra betöltés után
 document.addEventListener("DOMContentLoaded", () => {
   const btnOn = document.getElementById('turnAllOnBtn');
   const btnOff = document.getElementById('turnAllOffBtn');

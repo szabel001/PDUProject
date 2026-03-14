@@ -22,6 +22,12 @@ void PDU_webserver::setRelayStatusWeb(uint8_t id, uint8_t relay, bool status) {
     }
 }
 
+// Relay állapot beállítása
+void PDU_webserver::setAllRelayStatusWeb(bool status) {
+        iec->setAllIecRelayStatus(status);
+}
+
+
 // IEC frissítési ciklus
 void PDU_webserver::setUpdateInterval(uint32_t sec) {
     if(sec < 1) sec = 1;
@@ -39,19 +45,17 @@ void PDU_webserver::broadcastModules() {
     auto ids = iec->getFoundIECIDs();
     JsonDocument doc; 
 
-    // 1. A kliens JS elvárja, hogy megmondjuk, milyen típusú az üzenet
     doc["type"] = "update";
 
     doc["total_current"] = iec->getSumIECCurrentData();
     doc["total_power"] = iec->getSumIECPowerData();
+    doc["total_energy"] = iec->getSumIECEnergyData();
 
-    // 2. Létrehozunk egy "modules" nevű tömböt (ArduinoJson 7 szintaxis)
     JsonArray modulesArray = doc["modules"].to<JsonArray>();
 
     for(size_t i=0; i<ids.size(); i++) {
         uint8_t id = ids[i];
         
-        // 3. A tömbhöz hozzáadunk egy új objektumot (ArduinoJson 7 szintaxis)
         JsonObject obj = modulesArray.add<JsonObject>();
         
         obj["modbus_id"] = id;
@@ -59,6 +63,9 @@ void PDU_webserver::broadcastModules() {
         obj["voltage"] = iec->getRMSVoltageData(id);
         obj["current"] = iec->getRMSCurrentData(id);
         obj["power"] = iec->getApparentPowerData(id);
+        obj["energy"] = iec->getEnergyKWh(id);
+        obj["unit_power"] = "VA";
+        obj["unit_energy"] = "kWh";
         obj["version"] = iec->getIECVersion(id);
 
         obj["status"] = (int)iec->getIECStatus(id);
@@ -69,17 +76,13 @@ void PDU_webserver::broadcastModules() {
         int rcount = iec->getIECRelayCount(id);
         obj["relay_count"] = rcount;
         
-        // 4. Létrehozzuk a "relays" tömböt az objektumon belül (ArduinoJson 7 szintaxis)
         JsonArray relays = obj["relays"].to<JsonArray>();
         
-        // Végigmegyünk a reléken és betöltjük az állapotukat a tömbbe
         if(rcount > 8) rcount = 8; // Biztonsági limit
         for(int r = 0; r < rcount; r++) {
-            // Megjegyzés: Ha az IECControl-od támogatja a relé index lekérését, 
-            // érdemes így használni: iec->getIECRelayStatus(id, r)
             relays.add(iec->getIECRelayStatus(id)); 
         }
-    } // <-- A for ciklus vége
+    }
 
     String json;
     serializeJson(doc, json);
@@ -318,17 +321,16 @@ void PDU_webserver::runServer() {
                     // 3. IEC Measurement Cycle Time (s)
                     if (doc["meas_cycle"].is<int>()) {
                         int cycle = doc["meas_cycle"].as<int>();
-                        // A setUpdateInterval megcsinálja az NVS mentést és a hardver frissítését is
                         this->setUpdateInterval(cycle);
                     }
 
                     // 4. IEC Switching Delay (s)
                     if (doc["meas_delay"].is<int>()) {
                         int delay = doc["meas_delay"].as<int>();
-                        writeIntToNVS(NVSKeys::MEAS_DELAY, delay);
+                        iec->setIECSwitchingDelay(delay);
                     }
 
-                    Serial.println("Mérési beállítások mentve!");
+                    Serial.println("Measuring settings has been saved!");
                     request->send(200, "application/json", "{\"ok\":true}");
                 } else {
                     request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
@@ -372,10 +374,15 @@ void PDU_webserver::runServer() {
         JsonDocument doc; 
         doc["total_current"] = iec->getSumIECCurrentData();
         doc["total_power"] = iec->getSumIECPowerData();
+        doc["total_energy"] = iec->getSumIECEnergyData();
+
+
+        JsonArray modulesArray = doc["modules"].to<JsonArray>();
+
         auto ids = iec->getFoundIECIDs();
         for(size_t i=0;i<ids.size();i++){
             uint8_t id = ids[i];
-            JsonObject obj = doc.add<JsonObject>();
+            JsonObject obj = modulesArray.add<JsonObject>();
             obj["modbus_id"] = id;
             obj["id"] = iec->getIECID(id);
 
@@ -434,8 +441,18 @@ void PDU_webserver::runServer() {
             request->send(400,"text/plain","Invalid module or relay");
             return;
         }
-        
         setRelayStatusWeb(mod, relay, state);
+        request->send(200,"text/plain","OK");
+    });
+
+    webServer->on("/api/relay/setall", HTTP_GET, [this](AsyncWebServerRequest *request){
+        if(!request->hasParam("state")){
+            request->send(400,"text/plain","Missing state parameter");
+            return;
+        }
+        bool state = request->getParam("state")->value().toInt() == 1;
+        
+        setAllRelayStatusWeb(state);
         request->send(200,"text/plain","OK");
     });
 
@@ -498,23 +515,26 @@ void PDU_webserver::runServer() {
                 
                 if (!error && doc.containsKey("mod")) {
                     uint8_t modId = doc["mod"];
+                    bool success = true;
                     
-            // --- CSERÉLD LE A BEÁLLÍTÓ RÉSZT ERRE: ---
-                    if (doc.containsKey("warn")) {
-                        iec->setCustCurrWarningLimit(modId, doc["warn"].as<float>());
-                    }
-                    if (doc.containsKey("err")) {
-                        iec->setCustCurrErrorLimit(modId, doc["err"].as<float>());
-                    }
-                    if (doc.containsKey("avg")) {
-                        iec->setIECAVGNum(modId, doc["avg"].as<uint8_t>());
-                    }
+                if (doc.containsKey("warn")) {
+                    if(iec->setCustCurrWarningLimit(modId, doc["warn"].as<float>()) == false) success = false;
+                }
+                if (doc.containsKey("err")) {
+                    if(iec->setCustCurrErrorLimit(modId, doc["err"].as<float>()) == false) success = false;
+                }
+                if (doc.containsKey("avg")) {
+                    if(iec->setIECAVGNum(modId, doc["avg"].as<uint16_t>()) == false) success = false;
+                }
 
-
-                    Serial.printf("IEC Module %d settings updated\n", modId);
-                    request->send(200, "application/json", "{\"ok\":true}");
+                    if(success) {
+                        Serial.printf("IEC Module %d settings updated\n", modId);
+                        request->send(200, "application/json", "{\"ok\":true}");
+                    }
+                    else request->send(400, "application/json", "{\"ok\":false,\"error\":\"Failed to write to IEC!\"}");
+                   
                 } else {
-                    request->send(400, "application/json", "{\"ok\":false,\"error\":\"JSON hiba vagy hiányzó mod ID\"}");
+                    request->send(400, "application/json", "{\"ok\":false,\"error\":\"JSON error or missing mod ID!\"}");
                 }
             }
         }

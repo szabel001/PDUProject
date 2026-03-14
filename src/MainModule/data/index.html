@@ -50,7 +50,11 @@
           </div>
           <div style="text-align: center;">
             <span class="small" style="font-size: 14px;">Total Apparent Power</span><br>
-            <strong id="total_power" style="font-size: 28px; color: var(--danger);">0.00 W</strong>
+            <strong id="total_power" style="font-size: 28px; color: var(--danger);">0.00 VA</strong>
+          </div>
+           <div style="text-align: center;">
+            <span class="small" style="font-size: 14px;">Total Consumption</span><br>
+            <strong id="total_energy" style="font-size: 28px; color: var(--ok);">0.0000 kVAh</strong>
           </div>
         </div>
 
@@ -129,15 +133,15 @@
         <div class="settings-card">
           <h3>WiFi AP (Local network)</h3>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <span class="small">Status: <strong id="ap_status">Betöltés...</strong></span>
+            <span class="small">Status: <strong id="ap_status">Loading...</strong></span>
             <button id="toggleApBtn" class="btn wifi-toggle-btn off">AP: OFF</button>
           </div>
           
-          <label>SSID (Név)</label>
+          <label>SSID</label>
           <input type="text" id="set_ap_ssid" placeholder="PDU_AP">
-          <label>Jelszó (min. 8 karakter)</label>
+          <label>Password (min. 8 character)</label>
           <input type="password" id="set_ap_pass" placeholder="admin1234">
-          <label>IP Cím</label>
+          <label>IP Address</label>
           <input type="text" id="set_ap_ip" placeholder="192.168.4.1">
           <label>Gateway</label>
           <input type="text" id="set_ap_gw" placeholder="192.168.4.1">
@@ -152,7 +156,7 @@
         <div class="settings-card">
           <h3>MQTT Server</h3>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <span class="small">Status: <strong id="mqtt_status">Betöltés...</strong></span>
+            <span class="small">Status: <strong id="mqtt_status">Loading...</strong></span>
             <button id="toggleMqttBtn" class="btn wifi-toggle-btn off">MQTT: OFF</button>
           </div>
           
@@ -190,7 +194,7 @@
         <p>Developed by Abel Szentgyorgyi</p>
 
         <div class="about-info">
-          <div><strong>Platform:</strong> ESP32</div>
+          <div><strong>Platform:</strong> ESP32 + STM32</div>
           <div><strong>Backend:</strong> REST + WebSocket</div>
           <div><strong>UI:</strong> Vanilla JS + Chart.js</div>
         </div>

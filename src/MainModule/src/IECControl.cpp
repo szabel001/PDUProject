@@ -42,6 +42,7 @@ void IECControl::IECSetup() {
 }
 
 void IECControl::IECReadLoop() {
+  processRelaySequence(); 
   unsigned long _currentMillis_powerRead = millis();
   if (_currentMillis_powerRead - _startMillis_powerRead >= (powerDataUpdateCycleTime * 1000)) {
     _updateMeasurement();
@@ -65,16 +66,32 @@ void IECControl::collectIECModuleInfos() {
 //==========================================================//
 
 bool IECControl::setRelayStatus(uint8_t id, bool status) {
+  // 1. Kiküldjük az írási parancsot a Modbuson
   ModbusRTUMasterError _error = _mbMaster.writeSingleCoil(id, 0, status);
-  _readRelayStatus(id);
+  
+  // 2. Ha a Modbus sikeresen nyugtázta, tudjuk, hogy átváltott a relé
+  if (_error == MODBUS_RTU_MASTER_SUCCESS) {
+    
+    // Frissítjük a belső memóriákat, hogy a weboldal azonnal lássa a változást
+    _iecModules[id].coils[RELAY_STATE_ADDR] = status;
+    
+    #ifdef DEBUG
+      _debugString = "ID: " + String(id) + " success with a value of: " + String(status);
+      Serial.println(_debugString);
+    #endif
+    
+    return true; // Sikeres kapcsolás, az állapotgép léphet a következőre!
+  }
+  
   #ifdef DEBUG
-    _debugString = "ID: " + String(id) + " " + errorStrings[_error] + " with a value of: " + String(status);
+    _debugString = "ID: " + String(id) + " error: " + errorStrings[_error];
     Serial.println(_debugString);
   #endif
-  return getRelayStatus(id) == status;
+  
+  return false; // Hiba esetén a state machine vár 200ms-ot és újra megpróbálja
 }
 
-bool IECControl::setIECAVGNum(uint8_t id, uint8_t value) {
+bool IECControl::setIECAVGNum(uint8_t id, float value) {
   _writeIECAVGNum(id, value);
   return getIECAVGNum(id) == value;
 }
@@ -113,12 +130,48 @@ void IECControl::setIECSwitchingDelay(uint16_t delay) {
 }
 
 void IECControl::setAllIecRelayStatus(bool status) {
-  if (_foundIECIDs.empty()) return;
-  uint32_t delayMs = readIntFromNVS(NVSKeys::MEAS_DELAY, 0) * 1000;
-  for (auto& module : _iecModules) {
-    setRelayStatus(module.first, status);
-    if (delayMs > 0) delay(delayMs);
-  }
+    if (_foundIECIDs.empty()) return;
+    
+    _relaySequenceActive = true;
+    _relaySequenceTargetState = status;
+    _relaySequenceIndex = 0;
+    _relaySequenceDelayMs = readIntFromNVS(NVSKeys::MEAS_DELAY, 0) * 1000;
+    _relaySequenceLastTime = 0;
+    _lastRetryTime = 0;
+}
+
+void IECControl::processRelaySequence() {
+    if (!_relaySequenceActive) return;
+    if (_foundIECIDs.empty() || _relaySequenceIndex >= _foundIECIDs.size()) {
+        _relaySequenceActive = false;
+        return;
+    }
+
+    unsigned long currentMillis = millis();
+
+    if (_relaySequenceTargetState == true && _relaySequenceLastTime != 0) {
+        if (currentMillis - _relaySequenceLastTime < _relaySequenceDelayMs) {
+            return;
+        }
+    }
+    if (_lastRetryTime != 0 && (currentMillis - _lastRetryTime < 200)) {
+        return;
+    }
+
+    uint8_t currentModuleId = _foundIECIDs[_relaySequenceIndex];
+    bool success = setRelayStatus(currentModuleId, _relaySequenceTargetState);
+
+    if (success) {
+        _relaySequenceLastTime = currentMillis; 
+        _lastRetryTime = 0;
+        _relaySequenceIndex++;
+        
+        if (_relaySequenceIndex >= _foundIECIDs.size()) {
+            _relaySequenceActive = false;
+        }
+    } else {
+        _lastRetryTime = currentMillis; 
+    }
 }
 
 void IECControl::setAllIecRelaysOn() {
@@ -136,6 +189,15 @@ uint16_t IECControl::getIECSwitchingDelay(){
 //==========================================================//
 //========================= Getters ========================//
 //==========================================================//
+
+
+float IECControl::getSumIECEnergyData() {
+  float sum = 0;
+  for (uint8_t id : _foundIECIDs) {
+    sum += getEnergyKWh(id); // Vagy kVAh a korábbi számítások alapján
+  }
+  return sum;
+}
 
 float IECControl::getSumIECCurrentData() {
   float sum = 0;
@@ -255,22 +317,22 @@ uint16_t IECControl::getIEC_AVAILABLE_LEDS(uint8_t id)
 
 uint16_t IECControl::getIECRelayStatus(uint8_t id)
 {
-    return _getIntDataFromInputRegister(id, RELAY_STATE_ADDR);
+  return _iecModules[id].coils[RELAY_STATE_ADDR];
 }
 
 float IECControl::getCustCurrWarningLimit(uint8_t id)
 {
-    return _getFloatDataFromInputRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
+    return _getFloatDataFromHoldingRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
 }
 
 float IECControl::getCustCurrErrorLimit(uint8_t id)
 {
-    return _getFloatDataFromInputRegister(id, CUSTCURR_ERROR_LIMIT_ADDR);
+    return _getFloatDataFromHoldingRegister(id, CUSTCURR_ERROR_LIMIT_ADDR);
 }
 
 float IECControl::getIECAVGNum(uint8_t id)
 {
-    return _getFloatDataFromInputRegister(id, MEAS_AVG_NUM_ADDR);
+    return _getFloatDataFromHoldingRegister(id, MEAS_AVG_NUM_ADDR);
 }
 
 bool IECControl::getRelayStatus(uint8_t id) {
@@ -316,16 +378,6 @@ float IECControl::getPowerFactorData(uint8_t id) {
 
 //-----------------------Get data from local register----------------------------//
 
-float IECControl::_getFloatDataFromInputRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
-  uint32_t x = (_iecModules[id].inputRegisters[startOfData] << 16) + _iecModules[id].inputRegisters[startOfData + 1];
-  return *(float*)&x;
-}
-
-float IECControl::_getFloatDataFromHoldingRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
-  uint32_t x = (_iecModules[id].holdingRegisters[startOfData] << 16) + _iecModules[id].holdingRegisters[startOfData + 1];
-  return *(float*)&x;
-}
-
 void floatToIEEE754Registers(float value, uint16_t* regs) {
     uint32_t raw;
     std::memcpy(&raw, &value, sizeof(uint32_t));
@@ -340,7 +392,21 @@ float IEEE754RegistersToFloat(const uint16_t* regs) {
     return value;
 }
 
+float IECControl::_getFloatDataFromInputRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
+  uint32_t x = (_iecModules[id].inputRegisters[startOfData] << 16) + _iecModules[id].inputRegisters[startOfData + 1];
+  return *(float*)&x;
+}
+
+float IECControl::_getFloatDataFromHoldingRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
+  uint32_t x = (_iecModules[id].holdingRegisters[startOfData] << 16) + _iecModules[id].holdingRegisters[startOfData + 1];
+  return *(float*)&x;
+}
+
 uint16_t IECControl::_getIntDataFromInputRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
+  return _iecModules[id].inputRegisters[startOfData];
+}
+
+uint16_t IECControl::_getIntDataFromHoldingRegister(uint8_t id, uint16_t startOfData) { //Read data from module's local input register
   return _iecModules[id].inputRegisters[startOfData];
 }
 
@@ -398,7 +464,22 @@ bool IECControl::_updateMeasurement(uint8_t id) { // Update the measurement data
   _read_POWER_FACTOR(id);
   _read_AC_FREQUENCY(id);
   _readIECStatus(id);
-  return true; // TODO need give funtcionality to check if all readings were successful
+
+   // ENERGIA SZÁMÍTÁSA:
+    unsigned long now = millis();
+    if (_iecModules[id].lastEnergyUpdate > 0) {
+        float hoursPassed = (now - _iecModules[id].lastEnergyUpdate) / 3600000.0;
+        // W * h = Wh (Wattóra)
+        float power = getApparentPowerData(id);
+        _iecModules[id].energyConsumptionWh += power * hoursPassed;
+    }
+    _iecModules[id].lastEnergyUpdate = now;
+
+    return true;
+}
+
+float IECControl::getEnergyKWh(uint8_t id) {
+    return _iecModules[id].energyConsumptionWh / 1000.0; // Wh -> kWh
 }
 
 void IECControl::_readIECCapabilities(uint8_t id) {
@@ -430,7 +511,7 @@ void IECControl::_readRelayStatus(uint8_t id) {
         Serial.println(_debugString);
 #endif
     }
-    else _iecModules[id].inputRegisters[RELAY_STATE_ADDR] = buffer[0];
+    else _iecModules[id].coils[RELAY_STATE_ADDR] = buffer[0];
 }
 
 void IECControl::_read_RMS_VOLTAGE(uint8_t id) {
@@ -509,13 +590,28 @@ void IECControl::_readIECUINT16InputRegister(uint16_t id, uint16_t startOfData) 
   }
 }
 
+void IECControl::_readIECUINT16HoldingRegister(uint16_t id, uint16_t startOfData) { //Read float data from IEC module and stores it to the IEC's input register array
+  uint16_t buffer[1];
+  ModbusRTUMasterError _error = _mbMaster.readHoldingRegisters(id, startOfData, buffer, 1);
+
+  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
+    #ifdef DEBUG
+      _debugString = "Reading error UINT16 Holding Register from ID: " + String(id) + " " + errorStrings[_error];
+      Serial.println(_debugString);
+    #endif
+  }
+  else {
+    _iecModules[id].holdingRegisters[startOfData] = buffer[0];
+  }
+}
+
 void IECControl::_readIECCoil(uint8_t id, uint16_t startOfData) { //Read coil data from IEC module and stores it to the IEC's input register array
   bool buffer[1];
   ModbusRTUMasterError _error = _mbMaster.readCoils(id, startOfData, buffer, 1);
 
   if (_error != MODBUS_RTU_MASTER_SUCCESS) {
     #ifdef DEBUG
-      _debugString = "ID: " + String(id) + " " + errorStrings[_error];
+      _debugString = "Reading coil error from ID: " + String(id) + " " + errorStrings[_error];
       Serial.println(_debugString);
     #endif
   }
@@ -572,6 +668,10 @@ void IECControl::_readIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id) { //Read the rela
   _readIECCoil(id, IS_AC_FREQUENCY_MEASURED_ADDR);
 }
 
+void IECControl::_readOCTreshold(uint8_t id) { //Read the relay status from the given slave ID over
+  _readIECFloatHoldingRegister(id, OC_TRESHOLD_ADDR);
+}
+
 void IECControl::_readCustCurrWarningLimit(uint8_t id) { //Read the relay status from the given slave ID over
   _readIECFloatHoldingRegister(id, CUSTCURR_WARNING_LIMIT_ADDR);
 }
@@ -589,7 +689,7 @@ void IECControl::_writeCustCurrWarningLimit(uint8_t id, float value) { //Read th
   uint16_t buffer[2];
   floatToIEEE754Registers(value, buffer);
   ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, CUSTCURR_WARNING_LIMIT_ADDR, buffer, 2);
-  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
+  if (_error == MODBUS_RTU_MASTER_SUCCESS) {
     _readCustCurrWarningLimit(id);
   }
 }
@@ -598,8 +698,8 @@ void IECControl::_writeCustCurrErrorLimit(uint8_t id, float value) { //Read the 
   uint16_t buffer[2];
   floatToIEEE754Registers(value, buffer);
   ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, CUSTCURR_ERROR_LIMIT_ADDR, buffer, 2);
-  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
-    _readCustCurrWarningLimit(id);
+  if (_error == MODBUS_RTU_MASTER_SUCCESS) {
+    _readCustCurrErrorLimit(id);
   }
 }
 
@@ -607,16 +707,16 @@ void IECControl::_writeOCTreshold(uint8_t id, float value) { //Read the relay st
   uint16_t buffer[2];
   floatToIEEE754Registers(value, buffer);
   ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, OC_TRESHOLD_ADDR, buffer, 2);
-  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
-    _readCustCurrWarningLimit(id);
+  if (_error == MODBUS_RTU_MASTER_SUCCESS) {
+    _readOCTreshold(id);
   }
 }
 
-void IECControl::_writeIECAVGNum(uint8_t id, uint8_t value) { //Read the relay status from the given slave ID over
+void IECControl::_writeIECAVGNum(uint8_t id, float value) { //Read the relay status from the given slave ID over
   uint16_t buffer[2];
   floatToIEEE754Registers(value, buffer);
   ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, MEAS_AVG_NUM_ADDR, buffer, 2);
-  if (_error != MODBUS_RTU_MASTER_SUCCESS) {
-    _readCustCurrWarningLimit(id);
+  if (_error == MODBUS_RTU_MASTER_SUCCESS) {
+    _readIECAVGNum(id);
   }
 }

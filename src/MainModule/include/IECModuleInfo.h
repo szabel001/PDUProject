@@ -52,6 +52,10 @@ class IECModuleInfo {
   bool coils[NUM_COILS] = {0};                                  // array to store the coils of the IEC module
   bool discreteInputs[NUM_DISCRETEINPUTS] = {0};                // array to store the coils of the IEC module
 
+  float energyConsumptionWh = 0; // Wattórában tároljuk a nagyobb felbontásért
+  unsigned long lastEnergyUpdate = 0;
+
+
   bool setIECCapabilities();    // set the capabilities of the IEC module
 };
 #endif

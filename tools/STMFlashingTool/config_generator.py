@@ -7,7 +7,7 @@ OUTPUT_DIR = "config_bins"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 MAGIC = 0xC0CAC01A
-STRUCT_FORMAT = "<HIIIIfIIIIIIII"
+STRUCT_FORMAT = "<IIIIIfIIIIIIII"
 
 print("Generating CONFIG binaries based on CSV...\n")
 

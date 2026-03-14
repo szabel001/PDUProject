@@ -7,7 +7,7 @@ const MAX_HISTORY_POINTS = 10000; // Ekkora memóriát engedünk a böngészőne
 function updateAllModules(arr) {
   // Csak akkor próbáljuk feldolgozni, ha arr egy létező tömb
   if (!arr || !Array.isArray(arr)) {
-    console.warn("updateAllModules: Érvénytelen vagy hiányzó adatok érkeztek", arr);
+    console.warn("updateAllModules: Invalid or missing data was received.", arr);
     return;
   }
 
@@ -58,7 +58,7 @@ function upsertModule(m) {
 
 function openModulePage(id) {
   const m = modulesCache[id];
-  const mConf = modulesConfigCache[id] || m; 
+  const mConf = { ...m, ...(modulesConfigCache[id] || {}) }; 
 
   if (!m) return;
 
@@ -95,10 +95,11 @@ function renderModuleDetail(m, mConf) {
     </div>
 
     <div style="flex: 2; display:flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border-left: 1px solid rgba(253, 4, 4, 0.05); border-right: 1px solid rgba(0,0,0,0.05);">
-      <div class="small" id="detail_volt" style="font-weight:600;">Actual RMS Voltage: ">${typeof m.voltage === 'number' ? m.voltage.toFixed(2) : '--'} V</div>
-      <div class="small" id="detail_amp" style="font-weight:600;">Actual RMS Current: ">${typeof m.current === 'number' ? m.current.toFixed(2) : '--'} A</div>
-      <div class="small" id="detail_watt" style="font-weight:600;">Actual Apparent Power: ">${typeof m.power === 'number' ? m.power.toFixed(2) : '--'} W</div>
-    </div>
+      <div class="small" id="detail_volt" style="font-weight:600;">RMS Voltage: ">${typeof m.voltage === 'number' ? m.voltage.toFixed(2) : '--'} V</div>
+      <div class="small" id="detail_amp" style="font-weight:600;">RMS Current: ">${typeof m.current === 'number' ? m.current.toFixed(2) : '--'} A</div>
+      <div class="small" id="detail_watt" style="font-weight:600;">Apparent Power: ">${typeof m.power === 'number' ? m.power.toFixed(2) : '--'} VA</div>
+      <div class="small" id="detail_energy" style="font-weight:600; color: #00a651;">Total Consumption: ${typeof m.energy === 'number' ? m.energy.toFixed(4) : '--'} kVAh</div>
+      </div>
     
     <div style="flex: 1;"></div>
   </div>
@@ -110,16 +111,16 @@ function renderModuleDetail(m, mConf) {
       <div class="settings-card" style="margin-top:10px;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">          
           <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:8px;">
-            <li><strong>Available LEDs:</strong> ${mConf.availableLeds || 'N/A'}</li>
-            <li><strong>Current Limit:</strong> ${mConf.currentLimit || 'N/A'} A</li>
-            <li><strong>Relay Count:</strong> ${mConf.relay_count}</li>
+            <li><strong>Available LEDs:</strong> ${mConf.availableLeds !== undefined ? mConf.availableLeds : 'N/A'}</li>
+            <li><strong>Current Limit:</strong> ${mConf.currentLimit !== undefined ? mConf.currentLimit : 'N/A'} A</li>
+            <li><strong>Relay Count:</strong> ${mConf.relay_count !== undefined ? mConf.relay_count : 'N/A'}</li>
           </ul>
           <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:8px;">
-            <li><strong>Voltage Measured:</strong> ${mConf.isRMSVoltageMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Current Measured:</strong> ${mConf.isRMSCurrentMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Active Power Measured:</strong> ${mConf.isActivePowerMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Reactive Power Measured:</strong> ${mConf.isReactivePowerMeasured ? 'Yes' : 'No'}</li>
-            <li><strong>Frequency Measured:</strong> ${mConf.isACFrequencyMeasured ? 'Yes' : 'No'}</li>
+            <li><strong>Voltage Measured:</strong> ${mConf.isRMSVoltageMeasured !== undefined ? (mConf.isRMSVoltageMeasured ? 'Yes' : 'No') : 'N/A'}</li>
+            <li><strong>Current Measured:</strong> ${mConf.isRMSCurrentMeasured !== undefined ? (mConf.isRMSCurrentMeasured ? 'Yes' : 'No') : 'N/A'}</li>
+            <li><strong>Active Power Measured:</strong> ${mConf.isActivePowerMeasured !== undefined ? (mConf.isActivePowerMeasured ? 'Yes' : 'No') : 'N/A'}</li>
+            <li><strong>Reactive Power Measured:</strong> ${mConf.isReactivePowerMeasured !== undefined ? (mConf.isReactivePowerMeasured ? 'Yes' : 'No') : 'N/A'}</li>
+            <li><strong>Frequency Measured:</strong> ${mConf.isACFrequencyMeasured !== undefined ? (mConf.isACFrequencyMeasured ? 'Yes' : 'No') : 'N/A'}</li>
           </ul>
         </div>
       </div>
@@ -152,7 +153,7 @@ function renderModuleDetail(m, mConf) {
       <canvas id="chart_amp" class="detail-chart"></canvas>
 
       <div class="chart-header" style="display:flex; gap:10px; align-items: center;">
-        <button class="btn ghost chart-toggle" data-target="chart_watt" style="flex-grow: 1; text-align: center; background-color: #f8623449">Power (W)</button>
+        <button class="btn ghost chart-toggle" data-target="chart_watt" style="flex-grow: 1; text-align: center; background-color: #f8623449">Apparent Power (VA)</button>
         <button class="btn xml-btn" onclick="exportXML(${mConf.modbus_id}, 'watt')" style="white-space: nowrap;">⬇ XML Export</button>
       </div>
       <canvas id="chart_watt" class="detail-chart"></canvas>
@@ -229,17 +230,17 @@ function renderModuleDetail(m, mConf) {
     data: { labels: [...labels], datasets: [{ label: 'W', data: [...dataW], borderColor: '#d64545', tension: 0.3 }] },
     options: { ...commonOptions, scales: {
       x: {title: {display: true, text: 'Time [hh:mm:ss]'}},
-      y: { beginAtZero: true, title: {display: true,text: 'Power (W)'}} } }
+      y: { beginAtZero: true, title: {display: true,text: 'Apparent Power (VA)'}} } }
   });
 }
 
 function updateDetailMetrics(m) {
   const vEl = document.getElementById('detail_volt');
-  if (vEl) vEl.textContent = `Actual RMS Voltage: ${typeof m.voltage === 'number' ? m.voltage.toFixed(2) : '--'} V`;
+  if (vEl) vEl.textContent = `RMS Voltage: ${typeof m.voltage === 'number' ? m.voltage.toFixed(2) : '--'} V`;
   const aEl = document.getElementById('detail_amp');
-  if (aEl) aEl.textContent = `Actual RMS Current: ${typeof m.current === 'number' ? m.current.toFixed(2) : '--'} A`;
+  if (aEl) aEl.textContent = `RMS Current: ${typeof m.current === 'number' ? m.current.toFixed(2) : '--'} A`;
   const wEl = document.getElementById('detail_watt');
-  if (wEl) wEl.textContent = `Actual Apparent Power: ${typeof m.power === 'number' ? m.power.toFixed(2) : '--'} W`;
+  if (wEl) wEl.textContent = `Apparent Power: ${typeof m.power === 'number' ? m.power.toFixed(2) : '--'} VA`;
    // RELÉ GOMB FRISSÍTÉSE
   const relayBtn = document.getElementById('detailRelayBtn');
   if (relayBtn && m.relays) {
@@ -294,7 +295,7 @@ function addDetailPoint(id, t, v, a, p) {
 function exportXML(modId, type) {
   const hist = moduleHistory[modId];
   if (!hist || hist.length === 0) {
-    alert("Nincs még elég adat az exportáláshoz!");
+    alert("There is not enough data to export yet!");
     return;
   }
 
@@ -351,7 +352,7 @@ async function toggleRelay(modId, relayIdx, btn = null) {
     const res = await fetch(`/api/relay/set?mod=${modId}&relay=${relayIdx}&state=${newState}`, { method: 'GET' });
     
     if (!res.ok) {
-        console.error("Hiba a relé kapcsolásakor, szerver válasz:", res.status);
+        console.error("Error when switching the relay, server response:", res.status);
     }
     setTimeout(() => typeof fetchOnce === 'function' ? fetchOnce() : null, 150);
   } catch (e) {
@@ -385,7 +386,7 @@ async function saveIecModuleSettings(modId) {
     const result = await res.json();
     if (res.ok && result.ok) {
       alert(`Module #${modId} settings saved successfully!`);
-      showDashboard(); // Visszatérés a főoldalra
+      showDashboard();
     } else {
       alert("Error: " + (result.error || "Unknown error"));
     }

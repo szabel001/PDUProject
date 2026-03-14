@@ -28,6 +28,7 @@ private:
 
     bool hasModuleId(uint8_t id);
     void setRelayStatusWeb(uint8_t id, uint8_t relay, bool status);
+    void setAllRelayStatusWeb(bool status);
 
     uint32_t updateInterval = 1000; // ms, alapértelmezett 1s
     uint32_t lastMillis = 0;

@@ -43,10 +43,10 @@ class IECControl {
     void IECReadLoop();
 
     bool setRelayStatus(uint8_t id, bool status); // Set the relay status for the given slave ID
+    bool setIECAVGNum(uint8_t id, float value);
     bool setCustCurrWarningLimit(uint8_t id, float value);
     bool setCustCurrErrorLimit(uint8_t id, float value);
     void setOverCurrentTreshold(uint8_t id, float level);
-    bool setIECAVGNum(uint8_t id, uint8_t value);
     uint16_t getOverCurrentTreshold();
 
     void setAllIecRelaysOff(); // Set all IEC module relays off
@@ -93,28 +93,42 @@ class IECControl {
 
     IECStatus getIECStatus(uint8_t id);
 
+    float getSumIECEnergyData();
+
     float getSumIECCurrentData();       // [A] Get the sum of current data from all IECModuleInfo's local register
     float getAvgIECVoltageData();       // [V] Get the sum of voltage data from all IECModuleInfo's local register
     float getSumIECPowerData();         // [W] Get the sum of power
     float getAvgIECFrequencyData();     // [Hz] Get the average of frequency data from all IECModuleInfo's local register
-    
+    float getEnergyKWh(uint8_t id);
+
     void setpowerDataUpdateCycleTime(uint16_t cycleTime);  // Set the global cycle time for the power data acquisition
 
     std::vector<uint8_t> getFoundIECIDs(); // Vector to store discovered slave IDs
     std::vector<uint8_t> discoverIECs();
     uint16_t powerDataUpdateCycleTime = 1; // [sec]
+    void processRelaySequence();
 
 private:
+    bool _relaySequenceActive = false;
+    bool _relaySequenceTargetState = false;
+    size_t _relaySequenceIndex = 0;
+    unsigned long _relaySequenceLastTime = 0;
+    uint32_t _relaySequenceDelayMs = 0;
+    unsigned long _lastRetryTime = 0;
+
     bool _isIECCommunicate(uint8_t id);
     uint16_t _getIntDataFromInputRegister(uint8_t id, uint16_t startOfData);
+    uint16_t _getIntDataFromHoldingRegister(uint8_t id, uint16_t startOfData);
     bool _updateMeasurement();
     bool _updateMeasurement(uint8_t id);
+
 
     float _getFloatDataFromInputRegister(uint8_t id, uint16_t startOfData);
     float _getFloatDataFromHoldingRegister(uint8_t id, uint16_t startOfData);
     void _readIECFloatInputRegister(uint16_t id, uint16_t startOfData);
     void _readIECFloatHoldingRegister(uint16_t id, uint16_t startOfData);
     void _readIECUINT16InputRegister(uint16_t id, uint16_t startOfData);
+    void _readIECUINT16HoldingRegister(uint16_t id, uint16_t startOfData);
 
     void _readIECCoil(uint8_t id, uint16_t startOfData);
 
@@ -131,6 +145,7 @@ private:
     void _readIEC_IS_APPARENT_POWER_MEASURED(uint8_t id);
     void _readIEC_IS_POWER_FACTOR_MEASURED(uint8_t id);
     void _readIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id);
+    void _readOCTreshold(uint8_t id);
     void _readIECStatus(uint8_t id); // IEC's status is Error/Off/Standby/Active TODO implement
 
     void _readCustCurrWarningLimit(uint8_t id);
@@ -148,7 +163,7 @@ private:
     void _writeCustCurrWarningLimit(uint8_t id, float value);
     void _writeCustCurrErrorLimit(uint8_t id, float value);
     void _writeOCTreshold(uint8_t id, float value);
-    void _writeIECAVGNum(uint8_t id, uint8_t value);
+    void _writeIECAVGNum(uint8_t id, float value);
 
     ModbusRTUMaster _mbMaster;
     String _debugString = "";

@@ -61,7 +61,7 @@ uint8_t readHoldingRegs (void)
 	//| SLAVE_ID | FUNCTION_CODE | BYTE COUNT | DATA      | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  1 BYTE    | N*2 BYTES | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;  // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;  // slave ID
 	TxData[1] = RxData[1];  // function code
 	TxData[2] = numRegs*2;  // Byte count
 	int indx = 3;  // we need to keep track of how many bytes has been stored in TxData Buffer
@@ -100,7 +100,7 @@ uint8_t readInputRegs (void)
 	//| SLAVE_ID | FUNCTION_CODE | BYTE COUNT | DATA      | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  1 BYTE    | N*2 BYTES | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;  // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;  // slave ID
 	TxData[1] = RxData[1];  // function code
 	TxData[2] = numRegs*2;  // Byte count
 	int indx = 3;  // we need to keep track of how many bytes has been stored in TxData Buffer
@@ -143,7 +143,7 @@ uint8_t readCoils (void)
 	//| SLAVE_ID | FUNCTION_CODE | BYTE COUNT | DATA      | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  1 BYTE    | N*2 BYTES | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;  // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;  // slave ID
 	TxData[1] = RxData[1];  // function code
 	TxData[2] = (numCoils/8) + ((numCoils%8)>0 ? 1:0);  // Byte count
 	int indx = 3;  // we need to keep track of how many bytes has been stored in TxData Buffer
@@ -209,7 +209,7 @@ uint8_t readInputs (void)
 	//| SLAVE_ID | FUNCTION_CODE | BYTE COUNT | DATA      | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  1 BYTE    | N*2 BYTES | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;  // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;  // slave ID
 	TxData[1] = RxData[1];  // function code
 	TxData[2] = (numCoils/8) + ((numCoils%8)>0 ? 1:0);  // Byte count
 	int indx = 3;  // we need to keep track of how many bytes has been stored in TxData Buffer
@@ -281,7 +281,7 @@ uint8_t writeHoldingRegs (void)
 	//| SLAVE_ID | FUNCTION_CODE | Start Addr | num of Regs    | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  2 BYTE    | 2 BYTES      | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;    // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;    // slave ID
 	TxData[1] = RxData[1];   // function code
 	TxData[2] = RxData[2];   // Start Addr HIGH Byte
 	TxData[3] = RxData[3];   // Start Addr LOW Byte
@@ -313,7 +313,7 @@ uint8_t writeSingleReg (void)
 	//| SLAVE_ID | FUNCTION_CODE | Start Addr | Data     | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  2 BYTE    | 2 BYTES  | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;    // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;    // slave ID
 	TxData[1] = RxData[1];   // function code
 	TxData[2] = RxData[2];   // Start Addr HIGH Byte
 	TxData[3] = RxData[3];   // Start Addr LOW Byte
@@ -363,7 +363,7 @@ uint8_t writeSingleCoil (void)
 	//| SLAVE_ID | FUNCTION_CODE | Start Addr | Data     | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  2 BYTE    | 2 BYTES  | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;    // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;    // slave ID
 	TxData[1] = RxData[1];   // function code
 	TxData[2] = RxData[2];   // Start Addr HIGH Byte
 	TxData[3] = RxData[3];   // Start Addr LOW Byte
@@ -440,7 +440,7 @@ uint8_t writeMultiCoils (void)
 	//| SLAVE_ID | FUNCTION_CODE | Start Addr | Data     | CRC     |
 	//| 1 BYTE   |  1 BYTE       |  2 BYTE    | 2 BYTES  | 2 BYTES |
 
-	TxData[0] = SLAVE_ID;    // slave ID
+	TxData[0] = Config_Params->MODBUS_ID;    // slave ID
 	TxData[1] = RxData[1];   // function code
 	TxData[2] = RxData[2];   // Start Addr HIGH Byte
 	TxData[3] = RxData[3];   // Start Addr LOW Byte

@@ -7,11 +7,9 @@ function renderDashboard() {
   if (!grid) return;
 
   Object.values(modulesCache).forEach(m => {
-    // Ellenőrizzük, létezik-e már a kártya
     let card = document.querySelector(`[data-mod="${m.modbus_id}"]`);
     
     if (!card) {
-      // Ha még nincs, létrehozzuk a DOM elemet (csak egyszer fut le modulonként)
       card = document.createElement('div');
       card.className = 'card modern-card';
       card.setAttribute("data-mod", m.modbus_id);
@@ -49,13 +47,10 @@ function renderDashboard() {
 
       grid.appendChild(card);
 
-      // Listenerek hozzáfűzése a gombokhoz
-      //card.querySelector('.viewBtn').onclick = () => openModulePage(m.modbus_id);
       card.querySelector('.viewBtn:nth-child(1)').onclick = () => openModulePage(m.modbus_id); // Details
-      card.querySelector('.viewBtn:nth-child(2)').onclick = () => openIecSettings(m.modbus_id); // Settings gomb
+      card.querySelector('.viewBtn:nth-child(2)').onclick = () => openIecSettings(m.modbus_id); // Settings
       card.querySelector('.toggleBtn').onclick = (e) => toggleRelay(m.modbus_id, 0, e.target);
 
-      // Csak az első alkalommal inicializáljuk a grafikont
       initMiniChart(m.modbus_id);
     }
   });
@@ -84,16 +79,16 @@ function openIecSettings(id) {
     `;
 }
 
-// Az updateModuleCard cseréli a szöveget anélkül, hogy Canvas/DOM újragenerálást végezne
+// updateModuleCard replaces the text without regenerating the Canvas/DOM
+
 function updateModuleCard(m) {
   const card = document.querySelector(`[data-mod="${m.modbus_id}"]`);
   if (!card) return;
 
   card.querySelector('.voltage').textContent = typeof m.voltage === 'number' ? m.voltage.toFixed(2) + ' V' : '--';
   card.querySelector('.current').textContent = typeof m.current === 'number' ? m.current.toFixed(2) + ' A' : '--';
-  card.querySelector('.power').textContent = typeof m.power === 'number' ? m.power.toFixed(2) + ' W' : '--';
+  card.querySelector('.power').textContent = typeof m.power === 'number' ? m.power.toFixed(2) + ' VA' : '--';
 
-  // Relé gomb és badge frissítése
   const relayState = m.relays?.[0] ? 'ON' : 'OFF';
   const isRelayOn = m.relays?.[0];
   
@@ -101,7 +96,6 @@ function updateModuleCard(m) {
   toggleBtn.textContent = relayState;
   toggleBtn.className = `btn toggleBtn ${isRelayOn ? 'relay-on' : 'relay-off'}`;
 
-  // Status frissítése valós időben
   const statusSpan = card.querySelector('.mod-status');
   if (statusSpan) {
     statusSpan.textContent = getStatusText(m.status);
@@ -126,7 +120,7 @@ function initMiniChart(modId) {
         data: [],
         tension: 0.5,
         borderWidth: 1.5,
-        borderColor: '#00a651', // Áramhoz illő zöld szín
+        borderColor: '#00a651',
         backgroundColor: 'rgba(0, 166, 81, 0.1)',
         pointRadius: 0,
         fill: true
@@ -134,7 +128,7 @@ function initMiniChart(modId) {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false, // Engedi, hogy kitöltse a rendelkezésre álló magasságot
+      maintainAspectRatio: false,
       animation: {
         duration: 300,
         easing: 'easeOutCubic'
@@ -149,7 +143,6 @@ function initMiniChart(modId) {
   });
 }
 
-// --- updateSmallChartData és toggleRelay változatlan maradhat, ha az a korábbi fájlban már jól működött ---
 function updateSmallChartData(m) {
   const ch = chartsSmall[m.modbus_id];
   if (!ch) return;
