@@ -1,0 +1,23 @@
+A félév során a hardveres fejlesztési lehetőségek kiegészültek, így a teljes lista:
+•	Erősebb Relay: A jelenlegi 16A-est ki lehetne cserélni egy nagyobb, 32A-esre.
+•	Teljesítmény mérése: Feszültség méréssel ki kell egészíteni a mérési módszert, hogy pontosabb eredményt kapjunk és a feszültség ingadozásokból is lehessen hibajelenségekre következtetni.
+•	Hardver design: 
+o	Minden alkatrészt egy oldalra kell rakni, hogy olcsóbb legyen a gyártás
+o	Az ESP32 esetén olyan modult választottunk, amihez speciális beültetési eljárás kellett, ami szintén magasabb költséget jelentett, ehelyett találni kell egy másikat, amihez nem szükséges ez a forrasztási mód.
+o	Csökkenteni kell a használt GPIO lábakat az ESP32-n, például a kijelző lecserélésével egy I2C kommunikációsra SPI helyett.
+o	Le kell csökkenteni a PDU MAIN nyák hosszát, hogy optimálisabban elférjen a tervezett házban.
+o	Külön nyákon jobb lenne a kijelző, mivel azzal is helyet spótolnánk, illetve könnyebben beilleszthető lenne vele a házba.
+•	3.3V-os step-down melegedése:
+o	Mivel 12V-ról egy egyszerű 3.3V step down-nal alakítunk ESP-nek feszültséget, az egy nagyobb teljesítményt kell disszipáljon, ami miatt melegszik az eszköz. Ez a melegedés feszültségesést okoz, így az ESP resetel. Erre kell egy jobb design a V2 hardverre.
+•	8MB-os flash megtelt:
+o	Sok szoftveres komponens miatt a 8MB megtelt, így első lépésben szoftveresen kell optimalizálni a rendszert, esetleg egy redukált rendszert létrehozni. Másik opció egy nagyobb flash, 16MB-os ESP-vel, vagy küldő memória beiktatásával.
+
+Szoftveres fronton is van még több fejlesztési lehetőség:
+•	Az adatok egyelőre nem mentődnek kikapcsolás után, erre egy NVM-be mentés, SPIFFS (fájlrendszer) használata ad megoldást.
+•	PDU-k közti kommunikáció egyelőre nem készült el teljes formájában, így azt is ki kell egészíteni minden lehetőséggel.
+•	A több szoftveres komponens integrálása nagyobb feladat volt, mivel sok conflict-ot kellett feloldanom a programkódok között. Erre a megoldást egy nagyobb refaktorálás lenne, illetve a c++ nyelvnek megfelelő programozási paradigmák betartása, betartatása a kollégákkal.
+•	Egy robosztusabb hibakezelés is hiányzik még, ami a különböző hibaállapotokat jól kezeli, esetleg megoldja a buszon keletkező hibákat a kommunikáció során.
+•	RS485-ről ethernetre való átállás még nincs implementálva, ehhez a készülő V2 hardver működése után kerülhetne sor.
+
+Alapvetően úgy értékelem a féléves haladást, hogy sokmindent tanultam belőle, és sok időt fektettem abba, hogy a különböző részek működjenek, ami legalább az alacsony szintű szoftverben jelenleg teljesült is. 
+Tanulságként azt vonnám le, hogy egy csapatmunka során fontos a pontosan definiált feladatok kiosztása, amiben szintén nagyobb részt vállaltam a félév elején. A feladatok, mivel nem voltak teljesen leírva és a kollégák nem mindig értették meg, vagy nem tudtak önállóan döntést hozni a részükről, jelentősen lelassította a teljes rendszer elkészülését, ami így nem is jött teljesen létre. Későbbiekben szeretnék egy olyan változatot létrehozni, amit teljes egészében én implementálok, hogy egy biztosan működő rendszert kapjak TFT kijelző és valamilyen hálózati interfészt biztosítva. Ha ez jól lesz implementálva, akkor egy csapatmunkával készült részek is könnyen integrálhatók maradnak hozzá, ami a bővebb rendszert is lehetővé teszi.

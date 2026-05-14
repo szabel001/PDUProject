@@ -1,0 +1,26 @@
+Name;Address;Register;RW;Type;Range;Description
+RELAY_STATE;0;Coil;R;bool;0-1;The actual status of the relay (0 = open, 1 = closed).
+IS_RMS_VOLTAGE_MEASURED;1;Coil;R;bool;0-1;Indicates if RMS voltage measuring is available/active.
+IS_RMS_CURRENT_MEASURED;2;Coil;R;bool;0-1;Indicates if RMS current measuring is available/active.
+IS_ACTIVE_POWER_MEASURED;3;Coil;R;bool;0-1;Indicates if active power measuring is available/active.
+IS_REACTIVE_POWER_MEASURED;4;Coil;R;bool;0-1;Indicates if reactive power measuring is available/active.
+IS_APPARENT_POWER_MEASURED;5;Coil;R;bool;0-1;Indicates if apparent power measuring is available/active.
+IS_POWER_FACTOR_MEASURED;6;Coil;R;bool;0-1;Indicates if power factor measuring is available/active.
+IS_AC_FREQUENCY_MEASURED;7;Coil;R;bool;0-1;Indicates if AC frequency measuring is available/active.
+ID;0;Input Register;R;uint8_t;0-255;The unique identifier of the IEC module.
+VERSION;1;Input Register;R;uint16_t;0-65535;The firmware or hardware version of the IEC module.
+IEC_STATUS;2;Input Register;R;uint8_t;0-3;The current status of the IEC module (0 = Standby, 1 = Normal, 2 = Off, 3 = Error).
+AVAILABLE_LEDS;3;Input Register;R;uint8_t;0-9;Number of available LEDs on the module.
+CURRENT_LIMIT;4;Input Register;R;uint8_t;0-100;The configured maximum current limit.
+RELAY_COUNT;5;Input Register;R;uint8_t;0-9;Total number of relays present in the module.
+RMS_CURRENT;6;Input Register;R;float;0.0-100.0;The measured root mean square (RMS) current value.
+RMS_VOLTAGE;7;Input Register;R;float;0.0-500.0;The measured root mean square (RMS) voltage value.
+ACTIVE_POWER;8;Input Register;R;float;0.0-50000.0;The measured active (real) power.
+REACTIVE_POWER;9;Input Register;R;float;0.0-50000.0;The measured reactive power.
+APPARENT_POWER;10;Input Register;R;float;0.0-50000.0;The measured apparent power.
+POWER_FACTOR;11;Input Register;R;float;0.0-50000.0;The measured power factor (ratio of active to apparent power).
+AC_FREQUENCY;12;Input Register;R;float;0.0-50000.0;The measured AC grid frequency.
+MEAS_AVG_NUM;0;Holding Register;RW;uint8_t;0-100;The number of measurements used for calculating averages.
+CUSTCURR_WARNING_LIMIT;1;Holding Register;RW;float;0.0-100.0;Custom current limit threshold that triggers a warning.
+CUSTCURR_ERROR_LIMIT;2;Holding Register;RW;float;0.0-100.0;Custom current limit threshold that triggers an error.
+OC_TRESHOLD;3;Holding Register;RW;float;0.0-100.0;Overcurrent threshold limit for protection mechanisms.

@@ -8,75 +8,70 @@ enum IECStatus {
  currentOverTreshold = 3,
 };
 
-// Globális statikus változó az offset tárolására.
-// Kezdőértéknek megadjuk a névleges elméleti közepet.
 static float current_adc_offset = 2150.0f;
 
 void readCurrentData(ADC_HandleTypeDef* hadc)
 {
-    uint32_t sq_sum = 0;
+    // uint32_t helyett double, hogy elkerüljük a túlcsordulást a négyzetösszegnél!
+    double sq_sum = 0.0;
     uint32_t raw_sum = 0;
+    uint32_t sample_count = 0;
 
-    // Minták számának kiolvasása a regiszterből
-    float avgFloat = convertIEEE754ToFloat((Holding_Registers_Database[MEAS_AVG_NUM_ADDR] << 16) | Holding_Registers_Database[MEAS_AVG_NUM_ADDR+1]);
-    uint16_t samples = (uint16_t)avgFloat;
+    // Az 50 Hz-es jel egy periódusa 20 ms.
+    // Mérjünk pl. 100 ms-ig, ami pontosan 5 teljes periódus.
+    // A HAL_GetTick() 1ms-os felbontású, a több periódus segít elsimítani az 1ms-os jittert.
+    uint32_t measure_time_ms = 100;
+    uint32_t start_time = HAL_GetTick();
 
-    // Biztonsági limit, ha érvénytelen adat lenne a regiszterben
-    if(samples == 0 || samples > 2000) samples = 400;
-
-    for(uint16_t i = 0; i < samples; i++)
+    // Időalapú mintavételezés darabszám helyett
+    while((HAL_GetTick() - start_time) < measure_time_ms)
     {
         HAL_ADC_Start(hadc);
         HAL_ADC_PollForConversion(hadc, 10);
         uint16_t ADCRaw = HAL_ADC_GetValue(hadc);
+
+        // Pollingnál a Stop nem feltétlenül kell minden iterációban, de hagyhatjuk
         HAL_ADC_Stop(hadc);
 
         raw_sum += ADCRaw;
 
-        // AC komponens számítása az ELSZÁMOLT offset alapján
         float centered_sample = (float)ADCRaw - current_adc_offset;
+        sq_sum += (double)(centered_sample * centered_sample);
 
-        // Négyzetre emelés és összegzés (RMS-hez)
-        sq_sum += (uint32_t)(centered_sample * centered_sample);
+        sample_count++;
     }
 
-    // Kiszámoljuk a mostani mérés DC átlagát (nyers átlag)
-    float avgRaw = (float)raw_sum / samples;
+    // Biztonsági ellenőrzés (0-val való osztás elkerülése)
+    if(sample_count == 0) return;
+
+    float avgRaw = (float)raw_sum / sample_count;
 
     // =========================================================
-    // AUTOMATIKUS KALIBRÁCIÓ ÉS ÁRAM SZÁMÍTÁS
+    // Automatic current measuring
     // =========================================================
 
     if (Coils_Database[RELAY_STATE_ADDR] == 0) {
-        // HA A RELÉ KIKAPCSOLT ÁLLAPOTBAN VAN:
-        // Garantáltan 0A folyik. A mért átlag a szenzor új nullpontja.
-        // Egy mozgóátlagot (EMA - 80% régi, 20% új) használunk,
-        // hogy egy hirtelen zajtüske ne rontsa el a kalibrációt.
+        // Offset frissítése csak ha a relé kikapcsolt állapotban van (0A áram)
         current_adc_offset = (current_adc_offset * 0.8f) + (avgRaw * 0.2f);
-
-        // Az áramot kényszerítetten 0-ra állítjuk
         actualCurrent = 0.0f;
     }
     else {
-        // HA A RELÉ BEKAPCSOLT ÁLLAPOTBAN VAN:
-        // Kiszámoljuk az RMS ADC értéket a kikapcsolt állapotban megtanult offset használatával
-        float rms_adc = sqrtf((float)sq_sum / (float)samples);
+        // RMS számítása
+        float rms_adc = sqrtf((float)(sq_sum / sample_count));
 
-        // Áram konvertálása a kalibrációs polinommal (rms_adc az x)
+        // Polinomiális konverzió (A te korábbi egyenleted)
         float x = rms_adc;
         float current = -2.17167128e-7f * x * x + 1.20380534e-2f * x + 3.33630450e-3f;
 
-        // Nullpont alatti zaj levágása
         if (current < 0.0f) current = 0.0f;
 
         actualCurrent = current;
     }
 
-    // Eredmény beírása a Modbus regiszterbe
     addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, actualCurrent);
 
     // =========================================================
-    // LIMIT CHECK
+    // LIMIT CHECK (Változatlanul hagyva)
     // =========================================================
     float oc_thresh = convertIEEE754ToFloat((Holding_Registers_Database[OC_TRESHOLD_ADDR] << 16) | Holding_Registers_Database[OC_TRESHOLD_ADDR+1]);
     float err_lim   = convertIEEE754ToFloat((Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR] << 16) | Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR+1]);
@@ -100,7 +95,6 @@ void readCurrentData(ADC_HandleTypeDef* hadc)
         setRedStatusLed(0);
     }
 }
-
 void readVoltageData(){
 	float voltageVal = 230.0f;
 	addFloatToRegister(Input_Registers_Database, RMS_VOLTAGE_ADDR, voltageVal);
