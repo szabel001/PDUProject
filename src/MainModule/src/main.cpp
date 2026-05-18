@@ -37,7 +37,6 @@ void setup() {
   webserver->runServer(); // Initialize the web server
 
   tftDisplay.setupDisplay(*globalIEC, *networkLayer, *envSensor); // Initialize the TFT display with the IEC control reference
-
 }
 
 void loop() {

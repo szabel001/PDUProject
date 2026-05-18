@@ -41,7 +41,6 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-// Az utolsó, 30-es számú lap kezdőcíme (64KB-os G030 esetén)
 
 #define SETTINGS_FLASH_ADDR 0x0800E000
 
@@ -230,7 +229,6 @@ int main(void)
   Input_Registers_Database[RELAY_COUNT_ADDR] = Config_Params->RELAY_COUNT;
   MODBUS_ID = Config_Params->MODBUS_ID;
 
-	// Float inicialization
    addFloatToRegister(Holding_Registers_Database, MEAS_AVG_NUM_ADDR, 10.0);
    addFloatToRegister(Holding_Registers_Database, CUSTCURR_WARNING_LIMIT_ADDR, (float)Config_Params->CURRENT_LIMIT);
    addFloatToRegister(Holding_Registers_Database, CUSTCURR_ERROR_LIMIT_ADDR, (float)Config_Params->CURRENT_LIMIT);
@@ -238,7 +236,6 @@ int main(void)
 
    Flash_LoadSettings(&IECSettings);
 
-   // 2. Check if the flash is empty
    if (IECSettings.meas_avg_num == 0xFFFFFFFF) {
 	   float currLim = (float)Config_Params->CURRENT_LIMIT;
 	   IECSettings.meas_avg_num = 10.0;
@@ -264,7 +261,7 @@ int main(void)
 		readCurrentData(&hadc1);
 		readVoltageData();
 		readPowerData(&hadc1);
-		prevRelayState = setRelayStatus(prevRelayState);
+		setRelayStatus();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

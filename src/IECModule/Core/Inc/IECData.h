@@ -12,7 +12,8 @@ enum IECStatus;
 void readCurrentData(ADC_HandleTypeDef* hadc);
 void readPowerData(ADC_HandleTypeDef* hadc);
 void readVoltageData();
-uint8_t setRelayStatus(uint8_t prevRelayState);
+void setRelayStatus();
+void setRelayStatus(uint8_t prevRelayState);
 void setGreenStatusLed(uint8_t status);
 void setRedStatusLed(uint8_t status);
 void setCustCurrWarningLimit();
@@ -22,3 +23,4 @@ float convertIEEE754ToFloat(uint32_t hex);
 void setStatus(uint8_t status);
 
 extern float actualCurrent;
+extern uint8_t prevRelayState;

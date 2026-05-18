@@ -131,7 +131,7 @@ void PDU_webserver::runServer() {
         doc["eth_dns"]  = readStringFromNVS(NVSKeys::ETHERNET_DNS, "");
 
         // --- MEASURING ---
-        doc["meas_oc"]    = readIntFromNVS(NVSKeys::MEAS_OC, 16); // Javítva: Intként olvassuk
+        doc["meas_oc"]    = readIntFromNVS(NVSKeys::MEAS_OC, 16);
         doc["meas_temp"]  = readStringFromNVS(NVSKeys::MEAS_TEMP, "C");
         doc["meas_cycle"] = readIntFromNVS(NVSKeys::MEAS_CYCLE, 1);
         doc["meas_delay"] = readIntFromNVS(NVSKeys::MEAS_DELAY, 0);
