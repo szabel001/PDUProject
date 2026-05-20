@@ -315,14 +315,11 @@ void TFTDisplay::setupDisplay(IECControl &iec, networkLayerManager &networkMgr, 
           int iecMenuId = -1;
           for (auto &m : menus) if (String(m.title) == "IEC Module Menu") iecMenuId = m.id;
           
-          // 1. MENTSÜK MEG A REFRESH GOMBOT (ami épp le lett nyomva) mielőtt mindent törlünk!
           MenuItem refreshBtn = menus[idx].items[currentSelection];
 
-          // 2. Most már biztonságosan üríthetjük a listát
           menus[idx].items.clear();
           selectedIECModuleID = -1;
           
-          // 3. Modulok újrakeresése
           _iec->discoverIECs();
           std::vector<uint8_t> ids = _iec->getFoundIECIDs();
           
@@ -341,10 +338,8 @@ void TFTDisplay::setupDisplay(IECControl &iec, networkLayerManager &networkMgr, 
             }
           }
 
-          // 4. TEGYÜK VISSZA A REFRESH GOMBOT A LISTA VÉGÉRE!
           menus[idx].items.push_back(refreshBtn);
 
-          // 5. Kurzort visszaállítjuk a legelső elemre
           currentSelection = 0; 
           windowStart = 0; }));
     }
@@ -388,9 +383,9 @@ void TFTDisplay::processButton()
 {
   if (UpPressed)
   {
-    UpPressed = false; // Rögtön töröljük a flaget
+    UpPressed = false;
     if (digitalRead(BTN_UP) == LOW)
-    { // Zajszűrés: Tényleg le van nyomva?
+    {
       if (editing)
       {
         editor.nextInt();
@@ -404,9 +399,9 @@ void TFTDisplay::processButton()
 
   if (DownPressed)
   {
-    DownPressed = false; // Rögtön töröljük a flaget
+    DownPressed = false;
     if (digitalRead(BTN_DOWN) == LOW)
-    { // Zajszűrés: Tényleg le van nyomva?
+    {
       if (editing)
       {
         editor.prevInt();

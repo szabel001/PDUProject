@@ -6,7 +6,7 @@
 #include <TFTDisplay.h>
 #include <mqttHandler.h>
 
-uint16_t deafultHttpPort = 80; // TODO need to be configurable from web server
+uint16_t deafultHttpPort = 80;
 
 HardwareSerial IEC_RS485Serial(2);
 HardwareSerial PDU_RS485Serial(1);

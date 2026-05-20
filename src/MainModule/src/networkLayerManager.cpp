@@ -118,8 +118,6 @@ bool networkLayerManager::setWifiAP_Status(bool status) {
 ///-------------------------------- Wi-Fi STA mode setup ----------------------------------------
 ///----------------------------------------------------------------------------------------------
 
-// --- ÚJ ASZINKRON WIFI STA LOGIKA ---
-
 bool networkLayerManager::getSTAEnabled() {
     return _staEnabled;
 }
@@ -151,7 +149,7 @@ void networkLayerManager::connectSTA(String ssid, String pass) {
 
 void networkLayerManager::startAsyncScan() {
     if (!_isScanningMode) {
-        WiFi.scanNetworks(true); // true = aszinkron módon fusson a háttérben
+        WiFi.scanNetworks(true); // true = async
         _isScanningMode = true;
         _scanJSON = "[]";
     }
@@ -172,13 +170,10 @@ String networkLayerManager::getSTAStatusString() {
     return "Disconnected";
 }
 
-// EZT A FÜGGVÉNYT HÍVJUK A MAIN.CPP LOOP-JÁBÓL
 void networkLayerManager::handleAsyncTasks() {
-    // 1. Szkennelés állapotának figyelése
     if (_isScanningMode) {
         int16_t scanRes = WiFi.scanComplete();
         if (scanRes == WIFI_SCAN_RUNNING) {
-            // Még fut a szkennelés, nem csinálunk semmit
         } else if (scanRes == WIFI_SCAN_FAILED) {
             _isScanningMode = false;
             _scanJSON = "[]";
@@ -193,11 +188,10 @@ void networkLayerManager::handleAsyncTasks() {
             }
             serializeJson(doc, _scanJSON);
             _isScanningMode = false;
-            WiFi.scanDelete(); // Memória felszabadítása a szkennelés után
+            WiFi.scanDelete();
         }
     }
 
-    // 2. Csatlakozás állapotának figyelése
     if (_startConnecting) {
         if (WiFi.status() == WL_CONNECTED) {
             _startConnecting = false;
@@ -210,7 +204,6 @@ void networkLayerManager::handleAsyncTasks() {
 }
 
 
-// Visszaadja a talált hálózatokat JSON formátumban
 void networkLayerManager::scanNetworksJSON() {
   _startScanning = false;
   int n = WiFi.scanNetworks();
@@ -259,7 +252,7 @@ bool networkLayerManager::setWifiSTA_Status(bool status) {
   if (status) {
     WiFi.mode(WIFI_STA);
     WiFi.begin(_WifiSTA_SSID, _WifiSTA_Password);
-    WiFiSTAStatus = false; // Még nem tudjuk, sikerül-e
+    WiFiSTAStatus = false;
     Serial.println("WiFi csatlakozás elindítva a háttérben...");
     _startConnecting = true; 
     return true;
@@ -272,7 +265,6 @@ bool networkLayerManager::setWifiSTA_Status(bool status) {
   }
 }
 
-// Ezt a függvényt hívja a main.cpp loop-ja
 bool networkLayerManager::checkSTAConnection() {
     if (_startConnecting) {
         if (WiFi.status() == WL_CONNECTED) {
@@ -286,7 +278,6 @@ bool networkLayerManager::checkSTAConnection() {
         }
     }
 }
-
 
 void networkLayerManager::configureWifiSTA_SSID(String ssid) {
   _WifiSTA_SSID = ssid;

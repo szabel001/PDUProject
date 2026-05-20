@@ -8,36 +8,30 @@ PDU_webserver::PDU_webserver(AsyncWebServer *server, IECControl *iecControl, Env
     }
 }
 
-// Modul ellenőrzés
 bool PDU_webserver::hasModuleId(uint8_t id) {
     for(auto m: iec->getFoundIECIDs()) if(m == id) return true;
     return false;
 }
 
-// Relay állapot beállítása
 void PDU_webserver::setRelayStatusWeb(uint8_t id, uint8_t relay, bool status) {
     if(id >= 1 && id <= 32 && relay < 8) {
         Serial.printf("Set module %d relay %d -> %s\n", id, relay, status ? "ON" : "OFF");
-        iec->setRelayStatus(id, status); // IECControl implementáció
+        iec->setRelayStatus(id, status);
     }
 }
 
-// Relay állapot beállítása
 void PDU_webserver::setAllRelayStatusWeb(bool status) {
         iec->setAllIecRelayStatus(status);
 }
 
-
-// IEC frissítési ciklus
 void PDU_webserver::setUpdateInterval(uint32_t sec) {
     if(sec < 1) sec = 1;
     if(sec > 60) sec = 60;
     
-    updateInterval = sec * 1000; // A webszerver (millis) ms-ban számol, ezért * 1000
-    iec->setpowerDataUpdateCycleTime(sec); // Az IECControl másodpercet vár, így ez marad sec
+    updateInterval = sec * 1000;
+    iec->setpowerDataUpdateCycleTime(sec);
 }
 
-// WS broadcast minden modul állapotáról
 void PDU_webserver::broadcastModules() {
     if (millis() - lastMillis < updateInterval) return;
     lastMillis = millis();
@@ -89,11 +83,11 @@ void PDU_webserver::broadcastModules() {
     ws.textAll(json);
 }
 
-// Webserver inicializálás
+// Webserver init
 void PDU_webserver::runServer() {
     
     // ==========================================
-    // Beállítások LEKÉRÉSE (GET) a klienstől
+    // GET settings from client
     // ==========================================
     webServer->on("/api/settings/getData", HTTP_GET, [this](AsyncWebServerRequest *request){
         JsonDocument doc; 
@@ -147,19 +141,17 @@ void PDU_webserver::runServer() {
     });
 
     // ==========================================
-    // Beállítások MENTÉSE (POST) a klienstől
+    // Save settings from client (POST)
     // ==========================================
     webServer->on("/api/settings/setStaSettings", HTTP_POST, 
         [](AsyncWebServerRequest *request) {}, 
         NULL,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            // Buffer összeállítása (kezeljük, ha több csomagban jön)
             static String jsonBuffer = "";
             if (index == 0) jsonBuffer = "";
             for (size_t i = 0; i < len; i++) jsonBuffer += (char)data[i];
             Serial.println("Received JSON for STA settings: " + jsonBuffer);
 
-            // Ha megérkezett az összes adat
             if (index + len == total) {
                 JsonDocument doc;
                 DeserializationError error = deserializeJson(doc, jsonBuffer);
@@ -182,7 +174,6 @@ void PDU_webserver::runServer() {
         }
     );
 
-    // Rendszeres státusz lekérdezés a kliens felől
     webServer->on("/api/settings/sta_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
         doc["status"] = _networkLayer->getSTAStatusString();
@@ -192,7 +183,7 @@ void PDU_webserver::runServer() {
         request->send(200, "application/json", response);
     });
 
-    // WiFi Mód (Be/Ki)
+    // WiFi Mode (On/Off)
     webServer->on("/api/settings/setStaMode", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             JsonDocument doc;
@@ -203,13 +194,13 @@ void PDU_webserver::runServer() {
         }
     );
 
-    // Aszinkron WiFi szkennelés elindítása
+    // Async wifi scan
     webServer->on("/api/wifi/scan_start", HTTP_POST, [this](AsyncWebServerRequest *request) {
         _networkLayer->startAsyncScan();
         request->send(200, "application/json", "{\"ok\":true}");
     });
 
-    // Szkennelés eredményének lekérdezése
+    // Get the result of scan
     webServer->on("/api/wifi/scan_results", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (!_networkLayer->isScanComplete()) {
             request->send(200, "application/json", "{\"status\":\"scanning\"}");
@@ -219,7 +210,7 @@ void PDU_webserver::runServer() {
         }
     });
 
-    // Csatlakozás hálózathoz
+    // Connecting to WiFi network
     webServer->on("/api/settings/sta_connect", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             JsonDocument doc;
@@ -301,30 +292,29 @@ void PDU_webserver::runServer() {
                 DeserializationError error = deserializeJson(doc, jsonBuffer);
                 
                 if (!error) {
-                    // 1. Overcurrent Threshold (OC - A)
+                    // Overcurrent Threshold (OC - A)
                     if (doc["meas_oc"].is<int>()) {
                         int oc = doc["meas_oc"].as<int>();
                         writeIntToNVS(NVSKeys::MEAS_OC, oc);
                         
-                        // Azonnal alkalmazzuk a beállítást az összes megtalált IEC modulon!
                         for (uint8_t id : iec->getFoundIECIDs()) {
                             iec->setOverCurrentTreshold(id, oc);
                         }
                     }
                 
-                    // 2. Temperature Scale
+                    // Temperature Scale
                     if (doc["meas_temp"].is<String>()) {
                         String t = doc["meas_temp"].as<String>();
                         _envSensor->setTemperatureScale((t == "C" || t == "Celsius") ? 0 : 1);
                     }
 
-                    // 3. IEC Measurement Cycle Time (s)
+                    // IEC Measurement Cycle Time (s)
                     if (doc["meas_cycle"].is<int>()) {
                         int cycle = doc["meas_cycle"].as<int>();
                         this->setUpdateInterval(cycle);
                     }
 
-                    // 4. IEC Switching Delay (s)
+                    // IEC Switching Delay (s)
                     if (doc["meas_delay"].is<int>()) {
                         int delay = doc["meas_delay"].as<int>();
                         iec->setIECSwitchingDelay(delay);
@@ -368,7 +358,7 @@ void PDU_webserver::runServer() {
     );
 
     // ==========================================
-    // API: Modulok adatainak lekérése
+    // API: Get data of all modules in JSON format
     // ==========================================
     webServer->on("/api/data", HTTP_GET, [this](AsyncWebServerRequest *request){
         JsonDocument doc; 
@@ -426,7 +416,7 @@ void PDU_webserver::runServer() {
         });
 
     // ==========================================
-    // API: Relé direkt beállítása (1 = ON, 0 = OFF)
+    // API: Set relay state directly (1 = ON, 0 = OFF)
     // ==========================================
     webServer->on("/api/relay/set", HTTP_GET, [this](AsyncWebServerRequest *request){
         if(!request->hasParam("mod") || !request->hasParam("relay") || !request->hasParam("state")){
@@ -457,7 +447,7 @@ void PDU_webserver::runServer() {
     });
 
     // ==========================================
-    // AP Státusz és Toggle API
+    // AP Status and Toggle API
     // ==========================================
     webServer->on("/api/settings/ap_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
@@ -483,7 +473,7 @@ void PDU_webserver::runServer() {
     });
 
     // ==========================================
-    // MQTT Státusz és Toggle API
+    // MQTT Status and Toggle API
     // ==========================================
     webServer->on("/api/settings/mqtt_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
@@ -541,28 +531,23 @@ void PDU_webserver::runServer() {
     );
 
 
-    // --- Static fájlok kiszolgálása a belső flash-ről (SPIFFS)
     webServer->serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
-    // --- WebSocket beállítása
+    // Setup websocket
     ws.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
         if(type==WS_EVT_CONNECT) {
             Serial.printf("WS client #%u connected\n", client->id());
         } else if(type==WS_EVT_DISCONNECT) {
             Serial.printf("WS client #%u disconnected\n", client->id());
         } else if(type==WS_EVT_DATA){
-            // kliens üzenet feldolgozása, ha szükséges
         }
     });
     webServer->addHandler(&ws);
-
-    // Szerver indítása
-    // --- 404 Hibakezelő ---
     webServer->onNotFound([](AsyncWebServerRequest *request){
         request->send(404, "text/plain", "404: Not found");
     });
 
-    // Szerver indítása
+    // Setup web server
     webServer->begin();
     Serial.println("Webserver is running!");
 }

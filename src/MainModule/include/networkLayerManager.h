@@ -38,15 +38,15 @@ class networkLayerManager {
   bool _startScanning = false;
   bool _startConnecting = false;
 
-  void handleAsyncTasks();           // Ezt a main.cpp loop-jába kell tenni
-  void startAsyncScan();             // Aszinkron szkennelés indítása
-  bool isScanComplete();             // Ellenőrzi, befejeződött-e a szkennelés
-  String getScanResultsJSON();       // Visszaadja a szkennelés eredményét JSON-ben
+  void handleAsyncTasks();
+  void startAsyncScan();            
+  bool isScanComplete();            
+  String getScanResultsJSON();      
   
-  String getSTAStatusString();       // Visszaadja a státusz szöveget (Disabled, Disconnected, Connecting..., Connected)
-  bool getSTAEnabled();              // Lekérdezi, hogy be van-e kapcsolva a WiFi STA mód
-  void setSTAEnabled(bool enabled);  // Ki/Be kapcsolja a WiFi STA módot
-  void connectSTA(String ssid, String pass); // Csatlakozás indítása
+  String getSTAStatusString();      
+  bool getSTAEnabled();             
+  void setSTAEnabled(bool enabled); 
+  void connectSTA(String ssid, String pass);
 
   bool getWifiSTA_Status();
   bool setWifiSTA_Status(bool status);
@@ -84,8 +84,8 @@ class networkLayerManager {
   AsyncWebServer* webServer;
 
   private:
-  bool _checkEthernetConnection();       // Check if the Ethernet connection is available - connected cable and hardware
-  bool _networkStatus;                   //
+  bool _checkEthernetConnection();    
+  bool _networkStatus;                
   bool WiFiSTAStatus;
   bool WiFiAPStatus;
 
@@ -93,15 +93,15 @@ class networkLayerManager {
   bool _isScanningMode = false;
   String _scanJSON = "[]";
 
-  float _currentData;                    //
+  float _currentData;             
 
-  wifiMode _actualWifiMode;              // Wi-Fi mode - OFF, STA, AP
+  wifiMode _actualWifiMode;       
 
-  String _WifiAP_SSID;                // Wi-Fi SSID. password -> when it is used as AP (client can be connected to this AP with these credentials)
-  String _WifiAP_Password;            // belonding to the ESP's network
+  String _WifiAP_SSID;            
+  String _WifiAP_Password;        
 
-  String _WifiSTA_SSID;               // Wi-Fi SSID. password -> when it is used as STA (ESP can connect to a router with these credentials)
-  String _WifiSTA_Password;           // external network's credentials
+  String _WifiSTA_SSID;           
+  String _WifiSTA_Password;       
 
   IPAddress _WifiAP_IP;
   IPAddress _WifiAP_Subnet;

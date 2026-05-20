@@ -1,7 +1,6 @@
 #include "mqttHandler.h"
 #include <WiFi.h>
 
-// Konstruktor inicializálása
 MqttHandler::MqttHandler(IECControl* iecControl) 
     : _iec(iecControl), 
       mqttClient(espClient),
@@ -37,7 +36,6 @@ void MqttHandler::mqttCallback(char* topic, byte* payload, unsigned int length) 
         message += (char)payload[i];
     }
     Serial.println(message);
-    // Itt lehet majd lekezelni a bejövő parancsokat
 }
 
 void MqttHandler::handleMQTT() {
@@ -92,7 +90,6 @@ void MqttHandler::handleMQTT() {
         if (millis() - lastMqttPublish > 1000) {
             lastMqttPublish = millis();
             
-            // Itt használjuk az osztálynak átadott _iec pointert
             if (_iec) {
                 std::vector<uint8_t> ids = _iec->getFoundIECIDs();
                 for (uint8_t id : ids) {

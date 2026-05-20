@@ -10,18 +10,16 @@
 
 class MqttHandler {
 public:
-    // A konstruktorban átadjuk az IECControl pointerét
     MqttHandler(IECControl* iecControl);
     
     void setupMQTT();
     void handleMQTT();
     
-    // Állapot lekérdező függvények
     String getMQTTStatusString();
     bool isMQTTEnabled();
 
 private:
-    IECControl* _iec;            // Belső pointer a modulokhoz
+    IECControl* _iec;
     WiFiClient espClient;
     PubSubClient mqttClient;
 
@@ -34,7 +32,6 @@ private:
     unsigned long lastConnectAttempt;
     unsigned long lastNvsCheck;
 
-    // A PubSubClient C-stílusú callbacket vár, ezért ennek static-nak kell lennie
     static void mqttCallback(char* topic, byte* payload, unsigned int length);
 };
 
