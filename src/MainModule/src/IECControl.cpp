@@ -204,14 +204,6 @@ float IECControl::getSumIECCurrentData() {
   return sum;
 }
 
-float IECControl::getAvgIECVoltageData() {
-  float sum = 0;
-  for (uint8_t id : _foundIECIDs) {
-    sum += getRMSVoltageData(id);
-  }
-  return sum;
-}
-
 float IECControl::getSumIECPowerData() {
   float sum = 0;
   for (uint8_t id : _foundIECIDs) {

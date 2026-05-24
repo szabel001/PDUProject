@@ -9,13 +9,9 @@ function updateAllModules(arr) {
     return;
   }
 
-  // --- ÚJ RÉSZ: Eltűnt (lecsatlakoztatott) modulok törlése a cache-ből ---
-  // Kigyűjtjük a backendtől kapott aktuális azonosítókat
   const incomingIds = arr.map(m => String(m.modbus_id));
   
-  // Végigmegyünk az eddig tárolt modulokon
   Object.keys(modulesCache).forEach(cachedId => {
-    // Ha a tárolt azonosító nincs benne a friss listában, töröljük
     if (!incomingIds.includes(cachedId)) {
       delete modulesCache[cachedId];
       delete modulesConfigCache[cachedId];
@@ -285,6 +281,14 @@ function updateDetailMetrics(m) {
     }
   }
 
+  const statEl = document.getElementById('detail_status_val');
+  if (statEl) {
+    statEl.textContent = getStatusText(m.status);
+    statEl.style.color = getStatusColor(m.status);
+  }
+}
+
+function updateDetailConfig(m) {
   const warnInput = document.getElementById('iec_warn_limit');
   if (warnInput && document.activeElement !== warnInput && m.curr_warning !== undefined) {
     warnInput.value = m.curr_warning;
@@ -303,13 +307,6 @@ function updateDetailMetrics(m) {
   const errText = document.getElementById('config_err_val');
   if (errText && m.curr_error !== undefined) {
     errText.textContent = typeof m.curr_error === 'number' ? m.curr_error.toFixed(2) : m.curr_error;
-  }
-
-
-  const statEl = document.getElementById('detail_status_val');
-  if (statEl) {
-    statEl.textContent = getStatusText(m.status);
-    statEl.style.color = getStatusColor(m.status);
   }
 }
 

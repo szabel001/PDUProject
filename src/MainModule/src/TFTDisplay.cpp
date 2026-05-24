@@ -124,10 +124,9 @@ void TFTDisplay::setupMenu()
   addMenuItem(pduStatusId, MenuItem("Turn on all relays", MenuActionType::CALLBACK, -1, [this](){ _iec->setAllIecRelaysOn();}));
   addMenuItem(pduStatusId, MenuItem("Turn off all relays", MenuActionType::CALLBACK, -1, [this](){ _iec->setAllIecRelaysOff();}));
   addMenuItem(pduStatusId, MenuItem("SUM Curr.:", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("AVG Volt.::", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("SUM P:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("SUM App. P.:", MenuActionType::NONE));
+  addMenuItem(pduStatusId, MenuItem("SUM Cons:", MenuActionType::NONE));
   addMenuItem(pduStatusId, MenuItem("OC trsh.:", MenuActionType::NONE));
-  addMenuItem(pduStatusId, MenuItem("Frw ver.:", MenuActionType::NONE));
 
   // AHT10
   int aht10Id = addMenu("AHT10 Sensor", mainId);
@@ -637,10 +636,9 @@ void TFTDisplay::updateSystemValues()
     if (String(m.title) == "PDU Status")
     {
       m.items[2].value = String(_iec->getSumIECCurrentData()) + "A";
-      m.items[3].value = String(_iec->getAvgIECVoltageData()) + "V";
-      m.items[4].value = String(_iec->getSumIECPowerData()) + "VA";
+      m.items[3].value = String(_iec->getSumIECPowerData()) + "VA";
+      m.items[4].value = String(_iec->getSumIECEnergyData()) + "kVAh";
       m.items[5].value = String(_iec->getOverCurrentTreshold()) + "A";
-      m.items[6].value = "0.0.1";
     }
 
     if (String(m.title) == "AHT10 Sensor")

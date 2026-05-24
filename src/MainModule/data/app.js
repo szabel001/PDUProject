@@ -124,7 +124,8 @@ async function fetchOnce() {
     const modulesArr = data.modules ? data.modules : data;
     updateAllModules(modulesArr);
     updateModuleConfig(modulesArr);
-
+    updateDetailConfig(modulesArr);
+    
   } catch (e) {
     console.error('Fetch /api/data failed', e);
     connStatusEl.textContent = 'API error';
@@ -211,9 +212,7 @@ function handleWsMessage(msg) {
   }
 
   // Modulok frissítése
-  if (msg.type === 'full' && Array.isArray(msg.modules)) {
-    updateAllModules(msg.modules);
-  } else if (msg.type === 'update' && Array.isArray(msg.modules)) {
+  if (msg.type === 'update' && Array.isArray(msg.modules)) {
     msg.modules.forEach(m => upsertModule(m));
   } else if (msg.type === 'module' && msg.module) {
     upsertModule(msg.module);
