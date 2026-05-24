@@ -89,7 +89,7 @@ class IECControl {
     float getIECAVGNum(uint8_t id);
     float getCustCurrErrorLimit(uint8_t id); // Get the error level for the given slave ID
 
-    void collectIECModuleInfos();
+    std::vector<uint8_t> collectIECModuleInfos();
 
     IECStatus getIECStatus(uint8_t id);
 

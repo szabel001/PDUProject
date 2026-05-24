@@ -46,8 +46,37 @@ function applyTheme(dark) {
 themeBtn.onclick = () => applyTheme(!(document.body.classList.contains('dark')));
 applyTheme(localStorage.getItem('pdu_dark') === '1');
 // Refresh btn
-document.getElementById('refreshBtn').onclick = () => fetchOnce();
+document.getElementById('refreshBtn').onclick = async () => {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = 'Scanning for IEC modules...';
 
+  try {
+    // 1. Hardveres szkennelés indítása a backendben
+    const res = await fetch('/api/scan', { method: 'POST' });
+    if (!res.ok) throw new Error("Scan failed");
+
+    // 2. Frontend cache-ek törlése
+    modulesCache = {};
+    modulesConfigCache = {};
+    for (const id in chartsSmall) {
+      if (chartsSmall[id]) chartsSmall[id].destroy();
+    }
+    chartsSmall = {};
+    document.getElementById('modulesGrid').innerHTML = '';
+
+    // 3. Friss adatok lekérése
+    btn.textContent = 'Fetching...';
+    await fetchOnce();
+    
+  } catch (e) {
+    console.error("Refresh error:", e);
+    alert("Hiba történt a frissítés során!");
+  } finally {
+    btn.textContent = 'Refresh';
+    btn.disabled = false;
+  }
+};
 // Back btn
 document.getElementById('backBtn').onclick = () => {
   history.pushState({}, '', '/');
@@ -95,9 +124,6 @@ async function fetchOnce() {
     const modulesArr = data.modules ? data.modules : data;
     updateAllModules(modulesArr);
     updateModuleConfig(modulesArr);
-    
-    if(document.getElementById('iec_warn_limit')) document.getElementById('iec_warn_limit').value = data.curr_warning || '';
-    if(document.getElementById('iec_err_limit')) document.getElementById('iec_err_limit').value = data.curr_error || '';
 
   } catch (e) {
     console.error('Fetch /api/data failed', e);
@@ -288,6 +314,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!measDelayInput.checkValidity()) {
         measDelayInput.reportValidity();
           alert("Please fill all numeric fields with valid numbers (from 0 to 60)!");
+        return;
+      }
+
+      const measOcInput = document.getElementById('set_meas_oc');
+      if (!measOcInput.checkValidity()) {
+        measOcInput.reportValidity();
+          alert("Please fill all numeric fields with valid numbers (from 0 to 32)!");
         return;
       }
 
@@ -554,7 +587,9 @@ function updateEthernetFieldsVisibility() {
   if (ethDhcpSelect.value === "1") {
     ethStaticFields.style.display = 'none';
   } else {
-    ethStaticFields.style.display = 'block';
+    ethStaticFields.style.display = 'flex';
+    ethStaticFields.style.flexDirection = 'column';
+    ethStaticFields.style.gap = '5px'; // Egy kis térköz az elemek közé
   }
 }
 

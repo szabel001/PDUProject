@@ -322,7 +322,7 @@ void TFTDisplay::setupDisplay(IECControl &iec, networkLayerManager &networkMgr, 
           menus[idx].items.clear();
           selectedIECModuleID = -1;
           
-          _iec->discoverIECs();
+          _iec->collectIECModuleInfos();
           std::vector<uint8_t> ids = _iec->getFoundIECIDs();
           
           if (ids.size() == 0) {

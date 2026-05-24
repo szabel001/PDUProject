@@ -84,7 +84,7 @@ class networkLayerManager {
   AsyncWebServer* webServer;
 
   private:
-  bool _checkEthernetConnection();    
+  bool _isEthernetInitialized = false;
   bool _networkStatus;                
   bool WiFiSTAStatus;
   bool WiFiAPStatus;

@@ -16,22 +16,22 @@ public:
     PDU_webserver(AsyncWebServer *server, IECControl *iecControl, EnvironmentSensor *envSensor, networkLayerManager *networkLayer);
 
     void runServer(); 
-    void broadcastModules();          // WS frissítés
-    void setUpdateInterval(uint32_t ms); // IEC frissítési ciklus
+    void broadcastModules();
+    void setUpdateInterval(uint32_t ms);
 
 private:
     AsyncWebServer *webServer;
     IECControl *iec;
     AsyncWebSocket ws;
-    EnvironmentSensor *_envSensor; // Környezeti szenzor (hőmérséklet)
-    networkLayerManager *_networkLayer; // Hálózati réteg kezelő
+    EnvironmentSensor *_envSensor;
+    networkLayerManager *_networkLayer;
 
     bool hasModuleId(uint8_t id);
     void setRelayStatusWeb(uint8_t id, uint8_t relay, bool status);
     void setAllRelayStatusWeb(bool status);
 
     unsigned long lastModuleUpdate[256] = {0};
-    uint32_t updateInterval = 1000; // ms, alapértelmezett 1s
+    uint32_t updateInterval = 1000;
     uint32_t lastMillis = 0;
 };
 

@@ -88,6 +88,13 @@ void PDU_webserver::runServer() {
     // ==========================================
     // GET settings from client
     // ==========================================
+    webServer->on("/api/scan", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        Serial.println("[Web] Manual IEC bus rescan initiated...");
+        
+        iec->collectIECModuleInfos();
+        
+        request->send(200, "application/json", "{\"ok\":true}");
+    });
     webServer->on("/api/settings/getData", HTTP_GET, [this](AsyncWebServerRequest *request){
         JsonDocument doc; 
         // --- WIFI STA ---
@@ -310,12 +317,14 @@ void PDU_webserver::runServer() {
                     // IEC Measurement Cycle Time (s)
                     if (doc["meas_cycle"].is<int>()) {
                         int cycle = doc["meas_cycle"].as<int>();
+                        if (cycle < 0 || cycle > 60) request->send(400, "application/json", "{\"ok\":false,\"error\":\"Wrong measurement cycle time input value!\"}");
                         this->setUpdateInterval(cycle);
                     }
 
                     // IEC Switching Delay (s)
                     if (doc["meas_delay"].is<int>()) {
                         int delay = doc["meas_delay"].as<int>();
+                        if (delay < 0 || delay > 60) request->send(400, "application/json", "{\"ok\":false,\"error\":\"Wrong measurement delay input value!\"}");
                         iec->setIECSwitchingDelay(delay);
                     }
 
@@ -506,12 +515,13 @@ void PDU_webserver::runServer() {
                     bool success = true;
                     
                 if (doc.containsKey("warn")) {
+                    if (doc["warn"].as<float>() < 0 || doc["warn"].as<float>() > 32) request->send(400, "application/json", "{\"ok\":false,\"error\":\"Wrong warning limit!\"}");
                     if(iec->setCustCurrWarningLimit(modId, doc["warn"].as<float>()) == false) success = false;
                 }
                 if (doc.containsKey("err")) {
+                    if (doc["err"].as<float>() < 0 || doc["err"].as<float>() > 32) request->send(400, "application/json", "{\"ok\":false,\"error\":\"Wrong error limit!\"}");
                     if(iec->setCustCurrErrorLimit(modId, doc["err"].as<float>()) == false) success = false;
                 }
-
                     if(success) {
                         Serial.printf("IEC Module %d settings updated\n", modId);
                         request->send(200, "application/json", "{\"ok\":true}");

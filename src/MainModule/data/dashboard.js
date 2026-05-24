@@ -37,7 +37,6 @@ function renderDashboard() {
 
         <div class="card-actions">
           <button class="btn ghost viewBtn">Details</button>
-          <button class="btn ghost viewBtn">Settings</button>
           <button class="btn toggleBtn">...</button>
         </div>
       `;
@@ -45,34 +44,12 @@ function renderDashboard() {
       grid.appendChild(card);
 
       card.querySelector('.viewBtn:nth-child(1)').onclick = () => openModulePage(m.modbus_id); // Details
-      card.querySelector('.viewBtn:nth-child(2)').onclick = () => openIecSettings(m.modbus_id); // Settings
       card.querySelector('.toggleBtn').onclick = (e) => toggleRelay(m.modbus_id, 0, e.target);
 
       initMiniChart(m.modbus_id);
     }
   });
 }
-
-function openIecSettings(id) {
-    const m = modulesCache[id];
-    const detailCard = document.getElementById('moduleDetailCard');
-    document.getElementById('dashboard').style.display = 'none';
-    document.getElementById('moduleView').classList.add('active');
-    
-    detailCard.innerHTML = `
-        <h2>IEC Settings - Module #${id}</h2>
-        <div class="settings-card">
-            <label>Warning Current Limit (A)</label>
-            <input type="number" id="iec_warn_limit" value="${m.curr_warning !== undefined ? m.curr_warning : ''}  min="0" max="32">
-            
-            <label>Error Current Limit (A)</label>
-            <input type="number" id="iec_err_limit" value="${m.curr_error !== undefined ? m.curr_error : ''}  min="0" max="32">
-            
-            <button class="btn" onclick="saveIecModuleSettings(${id})">Save IEC Settings</button>
-        </div>
-    `;
-}
-
 
 function updateModuleCard(m) {
   const card = document.querySelector(`[data-mod="${m.modbus_id}"]`);

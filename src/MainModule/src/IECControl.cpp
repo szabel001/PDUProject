@@ -37,10 +37,6 @@ IECControl::IECControl(HardwareSerial& RS485Serial) : _mbMaster(RS485Serial, RS4
   _startMillis_powerRead = millis(); // Initialize the start time for power data update
 }
 
-void IECControl::IECSetup() {
-  collectIECModuleInfos();
-}
-
 void IECControl::IECReadLoop() {
   processRelaySequence(); 
   float fastMode = 0.1;
@@ -55,7 +51,7 @@ void IECControl::IECReadLoop() {
   }
 }
 
-void IECControl::collectIECModuleInfos() {
+std::vector<uint8_t> IECControl::collectIECModuleInfos() {
   _iecModules.erase(_iecModules.begin(), _iecModules.end());
   std::vector<uint8_t> foundIDs = discoverIECs();
   for (uint8_t id : foundIDs) {
@@ -64,6 +60,7 @@ void IECControl::collectIECModuleInfos() {
     _iecModules[id] = module;
     _readIECCapabilities(id);
   }
+  return foundIDs;
 }
 
 //==========================================================//
@@ -409,7 +406,7 @@ std::vector<uint8_t> IECControl::discoverIECs() {
   _foundIECIDs.clear();
   std::vector<uint8_t> slaveIDs;
   for (uint8_t i = 1; i <= 50; i++) {
-    bool status = _isIECCommunicate(i); //TODO Random reading to get active modules, shall be implemented in the future as real status reading
+    bool status = _isIECCommunicate(i);
     if (status) {
       #ifdef DEBUG
         Serial.print("Slave found with ID ");
