@@ -43,8 +43,13 @@ void IECControl::IECSetup() {
 
 void IECControl::IECReadLoop() {
   processRelaySequence(); 
+  float fastMode = 0.1;
+  float cycleTime;
   unsigned long _currentMillis_powerRead = millis();
-  if (_currentMillis_powerRead - _startMillis_powerRead >= (powerDataUpdateCycleTime * 1000)) {
+  if (powerDataUpdateCycleTime == 0) cycleTime = fastMode;
+  else cycleTime = powerDataUpdateCycleTime;
+  
+  if (_currentMillis_powerRead - _startMillis_powerRead >= (cycleTime * 1000)) {
     _updateMeasurement();
     _startMillis_powerRead = _currentMillis_powerRead;
   }
@@ -91,11 +96,6 @@ bool IECControl::setRelayStatus(uint8_t id, bool status) {
   return false; // Hiba esetén a state machine vár 200ms-ot és újra megpróbálja
 }
 
-bool IECControl::setIECAVGNum(uint8_t id, float value) {
-  _writeIECAVGNum(id, value);
-  return getIECAVGNum(id) == value;
-}
-
 bool IECControl::setCustCurrWarningLimit(uint8_t id, float level){
   _writeCustCurrWarningLimit(id, level);
   return getCustCurrWarningLimit(id) == level;
@@ -116,7 +116,7 @@ uint16_t IECControl::getOverCurrentTreshold() {
 }
 
 uint16_t IECControl::getPowerDataUpdateCycleTime() {
-  return readIntFromNVS(NVSKeys::MEAS_CYCLE, 1);
+  return readIntFromNVS(NVSKeys::MEAS_CYCLE, 0);
 }
 
 void IECControl::setpowerDataUpdateCycleTime(uint16_t cycleTime) {
@@ -330,11 +330,6 @@ float IECControl::getCustCurrErrorLimit(uint8_t id)
     return _getFloatDataFromHoldingRegister(id, CUSTCURR_ERROR_LIMIT_ADDR);
 }
 
-float IECControl::getIECAVGNum(uint8_t id)
-{
-    return _getFloatDataFromHoldingRegister(id, MEAS_AVG_NUM_ADDR);
-}
-
 bool IECControl::getRelayStatus(uint8_t id) {
   return _iecModules[id].coils[RELAY_STATE_ADDR];
 }
@@ -464,6 +459,7 @@ bool IECControl::_updateMeasurement(uint8_t id) { // Update the measurement data
   _read_POWER_FACTOR(id);
   _read_AC_FREQUENCY(id);
   _readIECStatus(id);
+  _readRelayStatus(id);
 
    // ENERGIA SZÁMÍTÁSA:
     unsigned long now = millis();
@@ -680,10 +676,6 @@ void IECControl::_readCustCurrErrorLimit(uint8_t id) { //Read the relay status f
   _readIECFloatHoldingRegister(id, CUSTCURR_ERROR_LIMIT_ADDR);
 }
 
-void IECControl::_readIECAVGNum(uint8_t id) { //Read the relay status from the given slave ID over
-  _readIECFloatHoldingRegister(id, MEAS_AVG_NUM_ADDR);
-}
-
 
 void IECControl::_writeCustCurrWarningLimit(uint8_t id, float value) { //Read the relay status from the given slave ID over
   uint16_t buffer[2];
@@ -709,14 +701,5 @@ void IECControl::_writeOCTreshold(uint8_t id, float value) { //Read the relay st
   ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, OC_TRESHOLD_ADDR, buffer, 2);
   if (_error == MODBUS_RTU_MASTER_SUCCESS) {
     _readOCTreshold(id);
-  }
-}
-
-void IECControl::_writeIECAVGNum(uint8_t id, float value) { //Read the relay status from the given slave ID over
-  uint16_t buffer[2];
-  floatToIEEE754Registers(value, buffer);
-  ModbusRTUMasterError _error = _mbMaster.writeMultipleHoldingRegisters(id, MEAS_AVG_NUM_ADDR, buffer, 2);
-  if (_error == MODBUS_RTU_MASTER_SUCCESS) {
-    _readIECAVGNum(id);
   }
 }

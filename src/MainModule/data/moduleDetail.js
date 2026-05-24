@@ -1,11 +1,9 @@
 let currentModuleId = null;
 
-// Globális archívum az adatoknak a kliens csatlakozásától
 const moduleHistory = {};
-const MAX_HISTORY_POINTS = 10000; // Ekkora memóriát engedünk a böngészőnek (kb. 3 óra adat másodpercenként)
+const MAX_HISTORY_POINTS = 10000;
 
 function updateAllModules(arr) {
-  // Csak akkor próbáljuk feldolgozni, ha arr egy létező tömb
   if (!arr || !Array.isArray(arr)) {
     console.warn("updateAllModules: Invalid or missing data was received.", arr);
     return;
@@ -25,7 +23,6 @@ function upsertModuleConfig(m){
   modulesConfigCache[m.modbus_id] = m;
 }
 
-
 function upsertModule(m) {
   modulesCache[m.modbus_id] = m;
   updateSmallChartData(m);
@@ -44,12 +41,10 @@ function upsertModule(m) {
     p: m.power
   });
 
-  // Ne engedjük végtelenül nőni a tömböt, megelőzzük a böngésző fagyását
   if (moduleHistory[m.modbus_id].length > MAX_HISTORY_POINTS) {
     moduleHistory[m.modbus_id].shift();
   }
 
-  // Ha pont ez a modul van nyitva, frissítjük a grafikont is
   if (currentModuleId === m.modbus_id) {
     addDetailPoint(m.modbus_id, timeStr, m.voltage, m.current, m.power);
     updateDetailMetrics(m);
@@ -185,13 +180,11 @@ function renderModuleDetail(m, mConf) {
     };
   });
 
-  // Lenyíló logika hozzáadása:
   html.querySelector('.data-toggle').onclick = (e) => {
     const target = document.getElementById(e.target.dataset.target);
     target.classList.toggle('open');
   };
 
-  // Előző chartok törlése
   if (chartsDetail[m.modbus_id]) {
     if (chartsDetail[m.modbus_id]['chart_volt']) chartsDetail[m.modbus_id]['chart_volt'].destroy();
     if (chartsDetail[m.modbus_id]['chart_amp']) chartsDetail[m.modbus_id]['chart_amp'].destroy();
@@ -200,7 +193,6 @@ function renderModuleDetail(m, mConf) {
 
   chartsDetail[m.modbus_id] = {};
 
-  // Történeti adatok betöltése a Chart JS formátumába
   const hist = moduleHistory[m.modbus_id] || [];
   const labels = hist.map(d => d.t);
   const dataV = hist.map(d => d.v);
@@ -252,7 +244,7 @@ function updateDetailMetrics(m) {
       relayBtn.className = `btn toggleBtn ${isRelayOn ? 'relay-on' : 'relay-off'}`;
     }
   }
-  // Státusz frissítése
+
   const statEl = document.getElementById('detail_status_val');
   if (statEl) {
     statEl.textContent = getStatusText(m.status);
@@ -272,13 +264,12 @@ function addDetailPoint(id, t, v, a, p) {
     chart.data.labels.push(t);
     chart.data.datasets[0].data.push(val);
 
-    // Dinamikus vágás a csúszka alapján
     while (chart.data.labels.length > pointLimit) {
       chart.data.labels.shift();
       chart.data.datasets[0].data.shift();
     }
 
-    chart.update('none'); // A 'none' mód gyorsabb frissítést tesz lehetővé animáció nélkül
+    chart.update('none');
 
 
     chart.update();
@@ -340,15 +331,13 @@ async function toggleRelay(modId, relayIdx, btn = null) {
 
   if (btn) { btn.disabled = true; }
 
-  // 1. Jelenlegi állapot lekérése a cache-ből és invertálása
   const m = modulesCache[modId];
-  let newState = 0; // Alapértelmezett kikapcsolás
+  let newState = 0;
   if (m && m.relays && m.relays.length > relayIdx) {
-    newState = m.relays[relayIdx] ? 0 : 1; // Ha 1 volt, 0 lesz, és fordítva
+    newState = m.relays[relayIdx] ? 0 : 1;
   }
 
   try {
-    // 2. A HELYES C++ backend végpont meghívása
     const res = await fetch(`/api/relay/set?mod=${modId}&relay=${relayIdx}&state=${newState}`, { method: 'GET' });
     
     if (!res.ok) {
@@ -363,15 +352,32 @@ async function toggleRelay(modId, relayIdx, btn = null) {
 }
 
 async function saveIecModuleSettings(modId) {
-  const warningLimit = document.getElementById('iec_warn_limit').value;
-  const errorLimit = document.getElementById('iec_err_limit').value;
-  const avgNum = document.getElementById('iec_avg_num').value;
+  const warningInput = document.getElementById('iec_warn_limit');
+  const errorInput = document.getElementById('iec_err_limit');
+
+  if (!warningInput.checkValidity() || !errorInput.checkValidity()) {
+    warningInput.reportValidity();
+    errorInput.reportValidity();
+    return;
+  }
+
+  const warningLimit = parseFloat(warningInput.value);
+  const errorLimit = parseFloat(errorInput.value);
+
+  if (warningLimit >= errorLimit) {
+    alert("Error: The warning limit must be less than the error limit!");
+    return;
+  }
+
+  if (isNaN(warningLimit) || isNaN(errorLimit)) {
+    alert("Please fill all numeric fields with valid numbers!");
+    return;
+  }
 
   const payload = {
     mod: modId,
     warn: parseFloat(warningLimit),
     err: parseFloat(errorLimit),
-    avg: parseInt(avgNum)
   };
 
   console.log("Saving IEC Module settings:", payload);

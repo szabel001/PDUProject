@@ -2,9 +2,9 @@
 function getStatusText(code) {
   switch(code) {
     case 0: return "OK";
-    case 1: return "Warning (Current)";
-    case 2: return "Error (Current)";
-    case 3: return "Over Threshold";
+    case 1: return "Warning (High Current)";
+    case 2: return "Error: Overcurrent Limit Reached";
+    case 3: return "Fatal: Hardware Overcurrent";
     default: return "Unknown";
   }
 }
@@ -212,7 +212,6 @@ async function fetchSettings() {
     if (!res.ok) throw new Error("API error");
     const settings = await res.json();
 
-    // ÚJ: Eltároljuk a globális currentSettings-be az összes beállítást (a delay-t is!)
     Object.assign(currentSettings, settings);
 
     // STA
@@ -235,6 +234,8 @@ async function fetchSettings() {
     if(document.getElementById('set_eth_gw')) document.getElementById('set_eth_gw').value = settings.eth_gw || '';
     if(document.getElementById('set_eth_sn')) document.getElementById('set_eth_sn').value = settings.eth_sn || '';
     if(document.getElementById('set_eth_dns')) document.getElementById('set_eth_dns').value = settings.eth_dns || '';
+
+    updateEthernetFieldsVisibility();
 
     // MEASURING
     if(document.getElementById('set_meas_oc')) document.getElementById('set_meas_oc').value = settings.meas_oc || 16;
@@ -281,10 +282,15 @@ document.addEventListener("DOMContentLoaded", () => {
 // MEASURING MENTÉS
   if(document.getElementById('saveMeasBtn')) {
     document.getElementById('saveMeasBtn').onclick = () => {
-      // 1. Frissítjük a memóriában lévő változót, amit a "Turn ALL ON/OFF" gomb használ
-      currentSettings.meas_delay = Number(document.getElementById('set_meas_delay').value);
+      const measDelayInput = document.getElementById('set_meas_delay');
+      currentSettings.meas_delay = Number(measDelayInput.value);
 
-      // 2. Elküldjük a backendnek az új értékeket
+      if (!measDelayInput.checkValidity()) {
+        measDelayInput.reportValidity();
+          alert("Please fill all numeric fields with valid numbers (from 0 to 60)!");
+        return;
+      }
+
       saveSettings('/api/settings/setMeas', {
         meas_oc: Number(document.getElementById('set_meas_oc').value),
         meas_temp: document.getElementById('set_meas_temp').value,
@@ -540,3 +546,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnOn) btnOn.onclick = () => sequenceRelays(true);
   if (btnOff) btnOff.onclick = () => sequenceRelays(false);
 });
+
+const ethDhcpSelect = document.getElementById('set_eth_dhcp');
+const ethStaticFields = document.getElementById('eth_static_fields');
+
+function updateEthernetFieldsVisibility() {
+  if (ethDhcpSelect.value === "1") {
+    ethStaticFields.style.display = 'none';
+  } else {
+    ethStaticFields.style.display = 'block';
+  }
+}
+
+ethDhcpSelect.addEventListener('change', updateEthernetFieldsVisibility);

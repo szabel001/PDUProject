@@ -1,5 +1,4 @@
 #include "mqttHandler.h"
-#include <WiFi.h>
 
 MqttHandler::MqttHandler(IECControl* iecControl) 
     : _iec(iecControl), 
@@ -92,13 +91,24 @@ void MqttHandler::handleMQTT() {
             
             if (_iec) {
                 std::vector<uint8_t> ids = _iec->getFoundIECIDs();
+                StaticJsonDocument<200> doc;
+                String topic = "pdu/";
+                doc["total_RMScurrent"] = _iec->getSumIECCurrentData();
+                doc["total_ApparentPower"] = _iec->getSumIECPowerData();
+                doc["total_energy"] = _iec->getSumIECEnergyData();
+                char buffer[200];
+                serializeJson(doc, buffer);
+                mqttClient.publish(topic.c_str(), buffer);
+
                 for (uint8_t id : ids) {
                     String topic = "pdu/module/" + String(id);
                     
                     StaticJsonDocument<200> doc;
-                    doc["voltage"] = _iec->getRMSVoltageData(id);
-                    doc["current"] = _iec->getRMSCurrentData(id);
-                    doc["power"] = _iec->getApparentPowerData(id);
+                    doc["RMSvoltage"] = _iec->getRMSVoltageData(id);
+                    doc["RMScurrent"] = _iec->getRMSCurrentData(id);
+                    doc["ApparentPower"] = _iec->getApparentPowerData(id);
+                    doc["Energy"] = _iec->getEnergyKWh(id);
+                    doc["relay_status"] = _iec->getRelayStatus(id);
 
                     char buffer[200];
                     serializeJson(doc, buffer);
@@ -117,11 +127,11 @@ String MqttHandler::getMQTTStatusString() {
     if (!isMQTTEnabled()) {
         return "Disabled";
     }
-    if (WiFi.status() != WL_CONNECTED) {
-        return "Waiting for WiFi...";
+    if (WiFi.status() != WL_CONNECTED || WiFi.softAPIP().toString() != "0.0.0.0" || Ethernet.linkStatus() == LinkOFF) {
+        return "Waiting for network...";
     }
     if (mqttClient.connected()) {
         return "Connected (" + mqttServerIP + ")";
     }
-    return "Disconnected / Reconnecting...";
+    return "Waiting for Broker...";
 }

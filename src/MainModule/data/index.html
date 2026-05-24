@@ -8,7 +8,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>PDU Dashboard — Multi IEC</title>
 
-  <!-- Chart.js CDN (könnyű és megbízható) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
@@ -87,16 +86,16 @@
         <div class="settings-card">
           <h3>Measurement Settings</h3>
           <label>Overcurrent Threshold (A)</label>
-          <input type="number" id="set_meas_oc" placeholder="16">
+          <input type="number" id="set_meas_oc" placeholder="16" min="0" max="32">
           <label>Temperature Scale</label>
           <select id="set_meas_temp">
             <option value="C">Celsius (°C)</option>
             <option value="F">Fahrenheit (°F)</option>
           </select>
           <label>IEC Measurement Cycle Time (s)</label>
-          <input type="number" id="set_meas_cycle" placeholder="1">
+          <input type="number" id="set_meas_cycle" placeholder="1"  min="0" max="60" step="1">
           <label>IEC Switching Delay (s)</label>
-          <input type="number" id="set_meas_delay" placeholder="0">
+          <input type="number" id="set_meas_delay" placeholder="0" min="1" max="60" step="1">
           <button class="btn" id="saveMeasBtn">Save Measurements</button>
         </div>
 
@@ -172,17 +171,21 @@
           <h3>Ethernet Settings</h3>
           <label>DHCP Enable</label>
           <select id="set_eth_dhcp">
-            <option value="1">DHCP Off (Auto IP)</option>
-            <option value="0">DHCP On (Fix IP)</option>
+            <option value="1">DHCP On (Automatic IP)</option>
+            <option value="0">DHCP Off (Static IP)</option>
           </select>
-          <label>IP Address</label>
-          <input type="text" id="set_eth_ip" placeholder="192.168.1.10">
-          <label>Gateway</label>
-          <input type="text" id="set_eth_gw" placeholder="192.168.1.1">
-          <label>Subnet</label>
-          <input type="text" id="set_eth_sn" placeholder="255.255.255.0">
-          <label>DNS</label>
-          <input type="text" id="set_eth_dns" placeholder="8.8.8.8">
+
+          <div id="eth_static_fields">
+            <label>IP Address</label>
+            <input type="text" id="set_eth_ip" placeholder="192.168.1.10">
+            <label>Gateway</label>
+            <input type="text" id="set_eth_gw" placeholder="192.168.1.1">
+            <label>Subnet</label>
+            <input type="text" id="set_eth_sn" placeholder="255.255.255.0">
+            <label>DNS</label>
+            <input type="text" id="set_eth_dns" placeholder="8.8.8.8">
+          </div>
+
           <button class="btn" id="saveEthBtn">Save Ethernet</button>
         </div>
       </div>
@@ -195,8 +198,8 @@
 
         <div class="about-info">
           <div><strong>Platform:</strong> ESP32 + STM32</div>
-          <div><strong>Backend:</strong> REST + WebSocket</div>
-          <div><strong>UI:</strong> Vanilla JS + Chart.js</div>
+          <div><strong>Backend:</strong> API + WebSocket</div>
+          <div><strong>UI:</strong>JavaScript + Chart.js</div>
         </div>
       </div>
     </div>
@@ -205,10 +208,8 @@
     <script src="dashboard.js"></script>
     <script src="moduleDetail.js"></script>
     <script src="router.js"></script>
-    <!-- Use any element to open the sidenav -->
     <span onclick="openNav()">open</span>
     <main id="content">
-      <!-- Dashboard (kártyák) -->
     </main>
 
     <footer>© PDU — Local</footer>

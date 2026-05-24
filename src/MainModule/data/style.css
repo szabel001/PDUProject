@@ -491,3 +491,14 @@ canvas.mini-chart {
 #wifiList div:hover {
   background: rgba(0, 102, 255, 0.05);
 }
+
+/* style.css hozzáadás */
+input[type="number"]:invalid {
+  border-color: #d64545;
+  background-color: #ffebeb;
+  outline: none;
+}
+
+input[type="number"]:invalid:focus {
+  box-shadow: 0 0 5px #d64545;
+}

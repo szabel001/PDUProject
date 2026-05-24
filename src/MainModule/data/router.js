@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const page = document.getElementById(id);
         if (page) page.classList.add('active');
 
-        // IEC dashboard esetén render
         if (id === 'iecDashboardPage') {
             renderDashboard();
         }

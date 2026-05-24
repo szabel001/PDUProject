@@ -354,7 +354,44 @@ void networkLayerManager::setEthernet_DNS(IPAddress dnsIP) {
 }
 
 void networkLayerManager::configureEthernet() {
-  ETH.config(_EthernetIP, _EthernetGateway, _EthernetSubnet, _EthernetDNS);
+    // 1. MAC cím generálása az ESP32 saját gyári azonosítójából
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA); 
+    
+    // Kis igazítás a MAC címen, hogy biztosan egyedi vezetékes eszköz legyen
+    mac[5] ^= 0x01; 
+
+    // 2. Ellenőrizzük, hogy a beállítás szerint DHCP-t kell-e használni
+    if (getEthernetDHCPStatus() == true) {
+        Serial.println("[Ethernet] Initialization with DHCP...");
+        
+        // Az Ethernet.begin(mac) elindítja a DHCP kérést.
+        // Blokkoló hívás, sikeres kapcsolódás esetén 1-et ad vissza.
+        if (Ethernet.begin(mac) == 0) {
+            Serial.println("[Ethernet] Failed DHCP configuration! Starting fallback...");
+            
+            // Opcionális: Ha a DHCP sikertelen, beállíthatunk egy fix biztonsági IP-t
+            IPAddress fallbackIP(192, 168, 1, 150);
+            IPAddress fallbackGW(192, 168, 1, 1);
+            IPAddress fallbackSN(255, 255, 255, 0);
+            Ethernet.begin(mac, fallbackIP, fallbackGW, fallbackGW, fallbackSN);
+        } else {
+            // Sikeres DHCP esetén frissítjük a belső változót a kapott IP-vel
+            _EthernetIP = Ethernet.localIP();
+            Serial.print("[Ethernet] DHCP successful! Received IP: ");
+            Serial.println(_EthernetIP);
+        }
+    } else {
+        // 3. Statikus konfiguráció alkalmazása
+        Serial.println("[Ethernet] Initialization with static IP settings...");
+        
+        // A belső privát IPAddress változók használata
+        Ethernet.begin(mac, _EthernetIP, _EthernetDNS, _EthernetGateway, _EthernetSubnet);
+    }
+    
+    // Kiírjuk a ténylegesen érvénybe lépett hálózati adatokat a soros monitorra
+    Serial.print("[Ethernet] Actual IP: ");
+    Serial.println(Ethernet.localIP());
 }
 
 bool networkLayerManager::getNetworkStatus() {

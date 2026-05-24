@@ -25,7 +25,7 @@ void PDU_webserver::setAllRelayStatusWeb(bool status) {
 }
 
 void PDU_webserver::setUpdateInterval(uint32_t sec) {
-    if(sec < 1) sec = 1;
+    if(sec < 0) sec = 0;
     if(sec > 60) sec = 60;
     
     updateInterval = sec * 1000;
@@ -65,7 +65,6 @@ void PDU_webserver::broadcastModules() {
         obj["status"] = (int)iec->getIECStatus(id);
         obj["curr_error"] = iec->getCustCurrErrorLimit(id);
         obj["curr_warning"] = iec->getCustCurrWarningLimit(id);
-        obj["meas_avg_num"] = iec->getIECAVGNum(id);
         
         int rcount = iec->getIECRelayCount(id);
         obj["relay_count"] = rcount;
@@ -127,7 +126,7 @@ void PDU_webserver::runServer() {
         // --- MEASURING ---
         doc["meas_oc"]    = readIntFromNVS(NVSKeys::MEAS_OC, 16);
         doc["meas_temp"]  = readStringFromNVS(NVSKeys::MEAS_TEMP, "C");
-        doc["meas_cycle"] = readIntFromNVS(NVSKeys::MEAS_CYCLE, 1);
+        doc["meas_cycle"] = readIntFromNVS(NVSKeys::MEAS_CYCLE, 0);
         doc["meas_delay"] = readIntFromNVS(NVSKeys::MEAS_DELAY, 0);
 
         // --- MQTT ---
@@ -387,7 +386,6 @@ void PDU_webserver::runServer() {
 
             obj["curr_error"] = iec->getCustCurrErrorLimit(id);
             obj["curr_warning"] = iec->getCustCurrWarningLimit(id);
-            obj["meas_avg_num"] = iec->getIECAVGNum(id);
             obj["status"] = (int)iec->getIECStatus(id);
 
             obj["availableLeds"] = iec->getIEC_AVAILABLE_LEDS(id);
@@ -512,9 +510,6 @@ void PDU_webserver::runServer() {
                 }
                 if (doc.containsKey("err")) {
                     if(iec->setCustCurrErrorLimit(modId, doc["err"].as<float>()) == false) success = false;
-                }
-                if (doc.containsKey("avg")) {
-                    if(iec->setIECAVGNum(modId, doc["avg"].as<uint16_t>()) == false) success = false;
                 }
 
                     if(success) {

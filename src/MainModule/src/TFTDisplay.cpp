@@ -228,7 +228,9 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId)
                               { 
                                 _networkMgr->setEthernetDHCP(!_networkMgr->getEthernetDHCPStatus());
                                 getMenuById(ethId)->items[0].value = _networkMgr->getEthernetDHCPStatus() ? "[ON]" : "[OFF]";
-                                drawMenuWindow(); }));
+                                _networkMgr->configureEthernet();
+                                drawMenuWindow(); 
+                              }));
                                 getMenuById(ethId)->items[0].value = _networkMgr->getEthernetDHCPStatus() ? "[ON]" : "[OFF]";
 
   addMenuItem(ethId, MenuItem("View Ethernet config", MenuActionType::CALLBACK, -1,
@@ -624,13 +626,6 @@ void TFTDisplay::updateIECValues(int id)
                                       _iec->setCustCurrErrorLimit(id, currLimit); 
                                       }); 
                                   })); m.items.back().value = String(_iec->getCustCurrErrorLimit(id)) + "A";
-       
-        addMenuItem(m.id, MenuItem("Meas avg num:", MenuActionType::CALLBACK, -1, [this, id]() { 
-                                      startEditing(_iec->getIECAVGNum(id), [this, id](const String &val) {
-                                      uint16_t num = val.toInt();
-                                      _iec->setIECAVGNum(id, num); 
-                                      }); 
-                                  })); m.items.back().value = String(_iec->getIECAVGNum(id));
     }
   }
 }

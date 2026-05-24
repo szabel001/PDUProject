@@ -7,6 +7,8 @@
 #include "IECControl.h"
 #include "variables.h"
 #include <ArduinoJson.h>
+#include <WiFi.h>
+#include <Ethernet.h>
 
 class MqttHandler {
 public:

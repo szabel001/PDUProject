@@ -10,9 +10,6 @@ enum IECStatus {
 
 static float current_adc_offset = 2150.0f;
 
-static float current_sum_for_avg = 0.0f;
-static uint32_t current_meas_count = 0;
-
 void readCurrentData(ADC_HandleTypeDef* hadc)
 {
     double sq_sum = 0.0;
@@ -48,13 +45,13 @@ void readCurrentData(ADC_HandleTypeDef* hadc)
     if (Coils_Database[RELAY_STATE_ADDR] == 0) {
         current_adc_offset = (current_adc_offset * 0.8f) + (avgRaw * 0.2f);
         actualCurrent = 0.0f;
+        addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, 0.0f);
+        return;
     }
     else {
         float rms_adc = sqrtf((float)(sq_sum / sample_count));
+        float current = (0.01196f * rms_adc);
 
-        float current = (0.01196f * rms_adc) - 25.718f;
-
-        if (current < 0.0f) current = 0.0f;
         actualCurrent = current;
     }
     // =========================================================
@@ -66,46 +63,29 @@ void readCurrentData(ADC_HandleTypeDef* hadc)
         setStatus(currentOverTreshold);
         setRelayStatus(0);
         setRedStatusLed(1);
-
-        current_sum_for_avg = 0.0f;
-        current_meas_count = 0;
         return;
     }
 
-    // =========================================================
-    // 2. Averaging
-    // =========================================================
-    uint16_t avg_num = Holding_Registers_Database[MEAS_AVG_NUM_ADDR];
-    if (avg_num == 0) avg_num = 1;
+    addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, actualCurrent);
 
-    current_sum_for_avg += actualCurrent;
-    current_meas_count++;
+    float err_lim   = convertIEEE754ToFloat((Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR] << 16) | Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR+1]);
+    float warn_lim  = convertIEEE754ToFloat((Holding_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR] << 16) | Holding_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR+1]);
 
-    if (current_meas_count >= avg_num) {
-        float final_avg_current = current_sum_for_avg / current_meas_count;
-        addFloatToRegister(Input_Registers_Database, RMS_CURRENT_ADDR, final_avg_current);
-
-        float err_lim   = convertIEEE754ToFloat((Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR] << 16) | Holding_Registers_Database[CUSTCURR_ERROR_LIMIT_ADDR+1]);
-        float warn_lim  = convertIEEE754ToFloat((Holding_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR] << 16) | Holding_Registers_Database[CUSTCURR_WARNING_LIMIT_ADDR+1]);
-
-        if (final_avg_current > err_lim) {
+    if (actualCurrent > err_lim) {
             setStatus(currentError);
             setRelayStatus(0);
             setRedStatusLed(1);
-        }
-        else if (final_avg_current > warn_lim){
+    }
+    else if (actualCurrent > warn_lim){
             setStatus(currentWarning);
             setRedStatusLed(0);
-        }
-        else {
+    }
+    else {
             setStatus(noError);
             setRedStatusLed(0);
-        }
-
-        current_sum_for_avg = 0.0f;
-        current_meas_count = 0;
     }
 }
+
 void readVoltageData(){
 	float voltageVal = 230.0f;
 	addFloatToRegister(Input_Registers_Database, RMS_VOLTAGE_ADDR, voltageVal);
@@ -120,9 +100,13 @@ void readPowerData(ADC_HandleTypeDef* hadc){
 	addFloatToRegister(Input_Registers_Database, APPARENT_POWER_ADDR, powerData);
 }
 
-void setRelayStatus(){
+void setRelayStatus_auto(){
 	uint8_t coilRelayState = Coils_Database[RELAY_STATE_ADDR];
 	if(prevRelayState != coilRelayState) {
+        if (coilRelayState == 1) {
+            setStatus(noError);
+            setRedStatusLed(0);
+        }
 		prevRelayState = coilRelayState;
 		HAL_GPIO_WritePin(RELAY_CTRL_GPIO_Port, RELAY_CTRL_Pin, coilRelayState);
 		setGreenStatusLed(coilRelayState);

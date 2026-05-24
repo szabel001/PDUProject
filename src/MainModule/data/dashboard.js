@@ -1,7 +1,4 @@
 // ---------------- DASHBOARD RENDER ----------------
-
-// ---------------- DASHBOARD RENDER (Optimalizált) ----------------
-
 function renderDashboard() {
   const grid = document.getElementById('modulesGrid');
   if (!grid) return;
@@ -66,20 +63,16 @@ function openIecSettings(id) {
         <h2>IEC Settings - Module #${id}</h2>
         <div class="settings-card">
             <label>Warning Current Limit (A)</label>
-            <input type="number" id="iec_warn_limit" value="${m.curr_warning !== undefined ? m.curr_warning : ''}">
+            <input type="number" id="iec_warn_limit" value="${m.curr_warning !== undefined ? m.curr_warning : ''}  min="0" max="32">
             
             <label>Error Current Limit (A)</label>
-            <input type="number" id="iec_err_limit" value="${m.curr_error !== undefined ? m.curr_error : ''}">
-            
-            <label>Measuring Average Points</label>
-            <input type="number" id="iec_avg_num" value="${m.meas_avg_num !== undefined ? m.meas_avg_num : ''}">
+            <input type="number" id="iec_err_limit" value="${m.curr_error !== undefined ? m.curr_error : ''}  min="0" max="32">
             
             <button class="btn" onclick="saveIecModuleSettings(${id})">Save IEC Settings</button>
         </div>
     `;
 }
 
-// updateModuleCard replaces the text without regenerating the Canvas/DOM
 
 function updateModuleCard(m) {
   const card = document.querySelector(`[data-mod="${m.modbus_id}"]`);

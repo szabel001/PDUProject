@@ -261,7 +261,7 @@ int main(void)
 		readCurrentData(&hadc1);
 		readVoltageData();
 		readPowerData(&hadc1);
-		setRelayStatus();
+		setRelayStatus_auto();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

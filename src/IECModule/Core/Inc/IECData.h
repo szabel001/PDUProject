@@ -12,7 +12,7 @@ enum IECStatus;
 void readCurrentData(ADC_HandleTypeDef* hadc);
 void readPowerData(ADC_HandleTypeDef* hadc);
 void readVoltageData();
-void setRelayStatus();
+void setRelayStatus_auto();
 void setRelayStatus(uint8_t prevRelayState);
 void setGreenStatusLed(uint8_t status);
 void setRedStatusLed(uint8_t status);
