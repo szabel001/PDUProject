@@ -2,9 +2,9 @@
 function getStatusText(code) {
   switch(code) {
     case 0: return "OK";
-    case 1: return "Warning (High Current)";
-    case 2: return "Error: Overcurrent Limit Reached";
-    case 3: return "Fatal: Hardware Overcurrent";
+    case 1: return "Warning (Warning Limit Reached)";
+    case 2: return "Error (Error Limit Reached)";
+    case 3: return "Error (Global Overcurrent Reached)";
     default: return "Unknown";
   }
 }
