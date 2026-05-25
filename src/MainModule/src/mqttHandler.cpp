@@ -127,8 +127,8 @@ String MqttHandler::getMQTTStatusString() {
     if (!isMQTTEnabled()) {
         return "Disabled";
     }
-    if (WiFi.status() != WL_CONNECTED || WiFi.softAPIP().toString() != "0.0.0.0" || Ethernet.linkStatus() == LinkOFF) {
-        return "Waiting for network...";
+    if (WiFi.status() != WL_CONNECTED) {
+        return "Disabled / Reconnecting...";
     }
     if (mqttClient.connected()) {
         return "Connected (" + mqttServerIP + ")";
