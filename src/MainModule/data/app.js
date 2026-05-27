@@ -120,6 +120,28 @@ async function fetchOnce() {
       tpEl.textContent = data.total_power.toFixed(2) + ' VA';
       teEl.textContent = data.total_energy.toFixed(4) + ' kVAh';
     }
+    try {
+      const envRes = await fetch('/api/env');
+      if (envRes.ok) {
+        const envData = await envRes.json();
+        
+        const tempEl = document.getElementById('dash_env_temp');
+        const humEl = document.getElementById('dash_env_hum');
+
+        const isTempValid = envData.temperature !== 0 && envData.temperature !== null && envData.temperature !== undefined && !isNaN(envData.temperature);
+        const isHumValid = envData.humidity !== 0 && envData.humidity !== null && envData.humidity !== undefined && !isNaN(envData.humidity);
+
+        if (tempEl) {
+          tempEl.innerHTML = isTempValid ? `${envData.temperature.toFixed(1)} <span style="font-size:16px;">°${envData.unit}</span>` : `-- <span style="font-size:16px;">°${envData.unit || 'C'}</span>`;
+        }
+
+        if (humEl) {
+          humEl.innerHTML = isHumValid ? `${envData.humidity.toFixed(1)} <span style="font-size:16px;">%</span>` : `-- <span style="font-size:16px;">%</span>`;
+        }
+      }
+    } catch (envError) {
+      console.warn('Hiba a környezeti adatok lekérésekor:', envError);
+    }
 
     const modulesArr = data.modules ? data.modules : data;
     updateAllModules(modulesArr);

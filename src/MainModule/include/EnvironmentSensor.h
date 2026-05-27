@@ -22,6 +22,7 @@ class EnvironmentSensor {
     void setSamplingTime(uint16_t cycleTime);
 
   private:
+    bool _temSensorInitialized = false;
     bool isfahrenheit = false;
     Adafruit_AHTX0 aht;
     sensors_event_t humidity, temp;

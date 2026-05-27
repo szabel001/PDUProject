@@ -88,6 +88,29 @@ void PDU_webserver::runServer() {
     // ==========================================
     // GET settings from client
     // ==========================================
+    // ==========================================
+    // API: Get Environment Sensor Data
+    // ==========================================
+    webServer->on("/api/env", HTTP_GET, [this](AsyncWebServerRequest *request){
+        JsonDocument doc; 
+        String tempUnit = readStringFromNVS(NVSKeys::MEAS_TEMP, "C");
+
+        float temp = _envSensor->getData().temperature; 
+        float hum = _envSensor->getData().humidity;
+
+        if (isnan(temp)) doc["temperature"] = nullptr;
+        else doc["temperature"] = temp;
+
+        if (isnan(hum)) doc["humidity"] = nullptr;
+        else doc["humidity"] = hum;
+
+        doc["unit"] = tempUnit;
+
+        String json;
+        serializeJson(doc, json);
+        request->send(200, "application/json", json);
+    });
+    
     webServer->on("/api/scan", HTTP_POST, [this](AsyncWebServerRequest *request) {
         Serial.println("[Web] Manual IEC bus rescan initiated...");
         

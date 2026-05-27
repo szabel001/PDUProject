@@ -37,12 +37,22 @@
 
     <div id="welcomePage" class="page">
       <div class="hero">
-        <h1>⚡ PDU Control Center</h1>
+        <h1>PDU Control Center</h1>
         <p class="hero-sub">
-          Real-time monitoring and intelligent control for your Power Distribution Units.
+          Real-time monitoring and intelligent control for your Power Distribution Unit.
         </p>
-
-        <div class="metrics" style="justify-content: center; gap: 40px; max-width: 600px; margin: 0 auto 30px auto; background: var(--card); padding: 20px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.06);">
+        
+        <div id="env_metrics" style="display: flex; justify-content: center; gap: 20px; max-width: 600px; margin: 0 auto 20px auto; flex-wrap: wrap;">
+            <div style="background: var(--card); padding: 15px 25px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.06); text-align: center; flex: 1; min-width: 140px;">
+              <span class="small" style="font-size: 14px;">Temperature</span><br>
+              <strong id="dash_env_temp" style="font-size: 24px; color: var(--primary);">--</strong>
+            </div>
+            <div style="background: var(--card); padding: 15px 25px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.06); text-align: center; flex: 1; min-width: 140px;">
+              <span class="small" style="font-size: 14px;">Humidity</span><br>
+              <strong id="dash_env_hum" style="font-size: 24px; color: #00a651;">--</strong>
+            </div>
+        </div>
+        <div class="metrics" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; max-width: 600px; margin: 0 auto 30px auto; background: var(--card); padding: 20px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.06);">
           <div style="text-align: center;">
             <span class="small" style="font-size: 14px;">Total Current</span><br>
             <strong id="total_current" style="font-size: 28px; color: var(--primary);">0.00 A</strong>

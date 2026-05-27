@@ -4,8 +4,13 @@ EnvironmentSensor::EnvironmentSensor() {
 }
 
 void EnvironmentSensor::setupEnvironmentSensor() {
-  if (! aht.begin()) Serial.println("Could not find AHT? Check wiring");
-  else Serial.println("AHT10 or AHT20 found");
+  if (! aht.begin()) {
+    Serial.println("Could not find AHT? Check wiring");
+    _temSensorInitialized = false;
+  } else {
+    Serial.println("AHT10 or AHT20 found");
+    _temSensorInitialized = true;
+  }
   setTemperatureScale(0); // default to Celsius
 }
 
@@ -19,6 +24,7 @@ bool EnvironmentSensor::isFahrenheit() {
 
 EnvironmentSensorData EnvironmentSensor::getData() {
   EnvironmentSensorData data = {NAN, NAN};
+  if (!_temSensorInitialized) return data;
   aht.getEvent(&humidity, &temp);
   data.temperature = temp.temperature;
   data.humidity = humidity.relative_humidity;
