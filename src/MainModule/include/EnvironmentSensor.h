@@ -5,8 +5,6 @@
 #include <Adafruit_AHTX0.h>
 #include "variables.h"
 
-#pragma once
-
 struct EnvironmentSensorData {
     float temperature;
     float humidity;

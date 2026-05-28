@@ -3,6 +3,7 @@ let currentModuleId = null;
 const moduleHistory = {};
 const MAX_HISTORY_POINTS = 10000;
 
+// ---------------- DASHBOARD RENDERING AND UPDATE ----------------
 function updateAllModules(arr) {
   if (!arr || !Array.isArray(arr)) {
     console.warn("updateAllModules: Invalid or missing data was received.", arr);
@@ -21,7 +22,6 @@ function updateAllModules(arr) {
       }
     }
   });
-  // --- ÚJ RÉSZ VÉGE ---
 
   arr.forEach(m => upsertModule(m));
   if (!currentModuleId) {
@@ -29,20 +29,23 @@ function updateAllModules(arr) {
   }
 }
 
+// Update only configurations
 function updateModuleConfig(arr){
     arr.forEach(m => upsertModuleConfig(m));
 }
 
+// add data to modulesConfigCache
 function upsertModuleConfig(m){
   modulesConfigCache[m.modbus_id] = m;
 }
 
+// add frequent data to modulesCache and update the dashboard card and detail page if open
 function upsertModule(m) {
   modulesCache[m.modbus_id] = m;
   updateSmallChartData(m);
   updateModuleCard(m);
 
-  // --- ADATOK MENTÉSE A HISTORY-BA ---
+  // save history
   if (!moduleHistory[m.modbus_id]) {
     moduleHistory[m.modbus_id] = [];
   }
@@ -65,6 +68,7 @@ function upsertModule(m) {
   }
 }
 
+// Select the correct modul to open
 function openModulePage(id) {
   const m = modulesCache[id];
   const mConf = { ...m, ...(modulesConfigCache[id] || {}) }; 
@@ -85,8 +89,7 @@ function showDashboard() {
   currentModuleId = null;
 }
 
-// ---------------- DETAIL RENDER ÉS XML EXPORT ----------------
-
+// ---------------- DETAIL PAGE RENDERING ----------------
 function renderModuleDetail(m, mConf) {
   moduleDetailCard.innerHTML = '';
 
@@ -205,7 +208,6 @@ function renderModuleDetail(m, mConf) {
   toggleBtn.textContent = m.relays?.[0] ? 'ON' : 'OFF';
   toggleBtn.className = `btn toggleBtn ${m.relays?.[0] ? 'relay-on' : 'relay-off'}`;
 
-  // Lenyíló animációk
   moduleDetailCard.querySelectorAll('.chart-toggle').forEach(btn => {
     const target = moduleDetailCard.querySelector('#' + btn.dataset.target);
     btn.onclick = () => {
@@ -269,7 +271,7 @@ function updateDetailMetrics(m) {
   if (aEl) aEl.textContent = `RMS Current: ${typeof m.current === 'number' ? m.current.toFixed(2) : '--'} A`;
   const wEl = document.getElementById('detail_watt');
   if (wEl) wEl.textContent = `Apparent Power: ${typeof m.power === 'number' ? m.power.toFixed(2) : '--'} VA`;
-   // RELÉ GOMB FRISSÍTÉSE
+
   const relayBtn = document.getElementById('detailRelayBtn');
   if (relayBtn && m.relays) {
     const isRelayOn = m.relays[0];
@@ -288,6 +290,7 @@ function updateDetailMetrics(m) {
   }
 }
 
+// update limits
 function updateDetailConfig(m) {
   const warnInput = document.getElementById('iec_warn_limit');
   if (warnInput && document.activeElement !== warnInput && m.curr_warning !== undefined) {
@@ -321,15 +324,11 @@ function addDetailPoint(id, t, v, a, p) {
     if (!chart) return;
     chart.data.labels.push(t);
     chart.data.datasets[0].data.push(val);
-
     while (chart.data.labels.length > pointLimit) {
       chart.data.labels.shift();
       chart.data.datasets[0].data.shift();
     }
-
     chart.update('none');
-
-
     chart.update();
   };
 
@@ -339,7 +338,7 @@ function addDetailPoint(id, t, v, a, p) {
 }
 
 // =========================================
-// XML EXPORT FUNKCIÓ
+// XML EXPORT
 // =========================================
 function exportXML(modId, type) {
   const hist = moduleHistory[modId];
@@ -364,7 +363,7 @@ function exportXML(modId, type) {
 
   xmlString += '</measurements>';
 
-  // Letöltés indítása böngészőben Blob segítségével
+  // Start download via Blob
   const blob = new Blob([xmlString], { type: 'application/xml' });
   const url = URL.createObjectURL(blob);
 
@@ -373,8 +372,6 @@ function exportXML(modId, type) {
   a.download = `Modul_${modId}_${type}_export.xml`;
   document.body.appendChild(a);
   a.click();
-
-  // Takarítás
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
@@ -409,6 +406,7 @@ async function toggleRelay(modId, relayIdx, btn = null) {
   }
 }
 
+// Save IEC module settings with Save button and send to server
 async function saveIecModuleSettings(modId) {
   const warningInput = document.getElementById('iec_warn_limit');
   const errorInput = document.getElementById('iec_err_limit');

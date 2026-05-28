@@ -43,7 +43,7 @@ function renderDashboard() {
 
       grid.appendChild(card);
 
-      card.querySelector('.viewBtn:nth-child(1)').onclick = () => openModulePage(m.modbus_id); // Details
+      card.querySelector('.viewBtn:nth-child(1)').onclick = () => openModulePage(m.modbus_id); // Details button
       card.querySelector('.toggleBtn').onclick = (e) => toggleRelay(m.modbus_id, 0, e.target);
 
       initMiniChart(m.modbus_id);

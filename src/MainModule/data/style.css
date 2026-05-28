@@ -16,7 +16,6 @@ body.dark {
   --primary: #000286;
 }
 
-/*header*/
 html,
 body {
   height: 100%;
@@ -236,17 +235,16 @@ footer {
   padding: 10px 10px 6px 32px;
   text-decoration: none;
   font-size: 20px;
-  color: var(--text); /* Fix szürke helyett a dinamikus szövegszín */
+  color: var(--text);
   display: block;
 }
 
 .sideBar a:hover {
-  color: var(--primary); /* Fix kék helyett a téma elsődleges (primary) színe */
+  color: var(--primary);
 }
 
 .main {
   margin-left: 200px;
-  /* Same as the width of the sidenav */
 }
 
 .subtitle {
@@ -415,9 +413,9 @@ footer {
 
 .mini-chart-container {
   width: 100%;
-  height: 80px;      /* Fix magasság, de dinamikus szélesség */
+  height: 80px; 
   position: relative;
-  overflow: hidden;  /* Megakadályozza a kilógást */
+  overflow: hidden;
 }
 
 canvas.mini-chart {
@@ -439,15 +437,15 @@ canvas.mini-chart {
 
 .detail-chart {
   width: 90%;
-  height: 250px;               /* fix grafikon méret */
-  max-height: 0;               /* alapból zárt */
+  height: 250px;    
+  max-height: 0;    
   overflow: hidden;
   opacity: 0;
   transition: max-height 0.35s ease, opacity 0.25s ease;
 }
 
 .detail-chart.open {
-  max-height: 250px;           /* ugyanannyi, mint a height */
+  max-height: 250px;
   opacity: 1;
 }
 
@@ -459,7 +457,7 @@ canvas.mini-chart {
 }
 
 .detail-panel.open {
-  max-height: 500px;   /* vagy nagyobb */
+  max-height: 500px; 
   opacity: 1;
 }
 
@@ -470,13 +468,12 @@ canvas.mini-chart {
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* Új osztály a kártyák egymás alá rendezéséhez */
 .settings-column {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 600px; /* Így nem nyúlnak el túlzottan a képernyő széléig */
-  margin: 0 auto; /* Középre igazítja az oszlopot */
+  max-width: 600px; 
+  margin: 0 auto;
 }
 
 .wifi-toggle-btn {
@@ -492,7 +489,6 @@ canvas.mini-chart {
   background: rgba(0, 102, 255, 0.05);
 }
 
-/* style.css hozzáadás */
 input[type="number"]:invalid {
   border-color: #d64545;
   background-color: #ffebeb;

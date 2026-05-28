@@ -1,4 +1,3 @@
-// --- Status formázó függvények ---
 function getStatusText(code) {
   switch(code) {
     case 0: return "OK";
@@ -19,9 +18,8 @@ function getStatusColor(code) {
   }
 }
 
-const MAX_POINTS = 60;
-let modulesCache = {};
-let modulesConfigCache = {};
+let modulesCache = {};        // dinamic values
+let modulesConfigCache = {};  // config values, not updated continuously
 let chartsSmall = {};
 let chartsDetail = {};
 let ws = null;
@@ -35,9 +33,9 @@ const moduleView = document.getElementById('moduleView');
 const moduleDetailCard = document.getElementById('moduleDetailCard');
 const dashboard = document.getElementById('dashboard');
 
-// Theme
-const themeBtn = document.getElementById('themeBtn');
+const themeBtn = document.getElementById('themeBtn'); 
 
+// Dark mode toggle
 function applyTheme(dark) {
   if (dark) document.body.classList.add('dark'); else document.body.classList.remove('dark');
   themeBtn.textContent = dark ? '☀️' : '🌙';
@@ -45,18 +43,15 @@ function applyTheme(dark) {
 }
 themeBtn.onclick = () => applyTheme(!(document.body.classList.contains('dark')));
 applyTheme(localStorage.getItem('pdu_dark') === '1');
-// Refresh btn
 document.getElementById('refreshBtn').onclick = async () => {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
-  btn.textContent = 'Scanning for IEC modules...';
+  btn.textContent = 'Scanning for IEC modules...'; // Update and scan all modules with refresh btn
 
   try {
-    // 1. Hardveres szkennelés indítása a backendben
     const res = await fetch('/api/scan', { method: 'POST' });
     if (!res.ok) throw new Error("Scan failed");
 
-    // 2. Frontend cache-ek törlése
     modulesCache = {};
     modulesConfigCache = {};
     for (const id in chartsSmall) {
@@ -65,7 +60,6 @@ document.getElementById('refreshBtn').onclick = async () => {
     chartsSmall = {};
     document.getElementById('modulesGrid').innerHTML = '';
 
-    // 3. Friss adatok lekérése
     btn.textContent = 'Fetching...';
     await fetchOnce();
     
@@ -77,13 +71,12 @@ document.getElementById('refreshBtn').onclick = async () => {
     btn.disabled = false;
   }
 };
-// Back btn
+
 document.getElementById('backBtn').onclick = () => {
   history.pushState({}, '', '/');
   showDashboard();
 };
 
-// Routing: hash or history
 window.addEventListener('popstate', () => {
   if (location.hash.startsWith('#module-')) {
     const id = parseInt(location.hash.replace('#module-', ''), 10);
@@ -157,11 +150,9 @@ async function fetchOnce() {
 
 // ---------------- Startup ----------------
 function start() {
-  // try websocket first
   initWebSocket();
-  // also start polling initially until ws opens
   setTimeout(() => {
-    if (!connected) {
+    if (!connected) {  // start polling initially until ws opens
       connStatusEl.textContent = 'WebSocket is not available — Polling...';
       fallbackToPoll();
     } else {
@@ -191,7 +182,6 @@ function initWebSocket() {
     connected = true;
     connStatusEl.textContent = 'WebSocket: connected';
     connStatusEl.style.color = '';
-    // ask full state
     ws.send(JSON.stringify({ action: 'subscribe' }));
   };
 
@@ -214,6 +204,8 @@ function initWebSocket() {
 
   ws.onerror = (e) => {
     console.warn('WS error', e);
+    connStatusEl.textContent = 'WebSocket error';
+    connStatusEl.style.color = 'red';
     ws.close();
   };
 }
@@ -233,7 +225,7 @@ function handleWsMessage(msg) {
      if (teEl) teEl.textContent = msg.total_energy.toFixed(4) + ' kVAh';
   }
 
-  // Modulok frissítése
+  // update modules
   if (msg.type === 'update' && Array.isArray(msg.modules)) {
     msg.modules.forEach(m => upsertModule(m));
   } else if (msg.type === 'module' && msg.module) {
@@ -250,10 +242,10 @@ if (location.hash.startsWith('#module-')) {
 }
 
 // ==========================================
-// BEÁLLÍTÁSOK KEZELÉSE (Settings)
+// Settings 
 // ==========================================
 
-async function fetchSettings() {
+async function fetchSettings() { // Fetch current settings from ESP
   try {
     const res = await fetch('/api/settings/getData');
     if (!res.ok) throw new Error("API error");
@@ -300,10 +292,10 @@ async function fetchSettings() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => { // Initial settings load
   fetchSettings();
 
-  // WIFI AP MENTÉS
+  // SAVE WIFI AP SETTINGS
   if(document.getElementById('saveApBtn')) {
     document.getElementById('saveApBtn').onclick = () => saveSettings('/api/settings/setAp', {
       ap_ssid: document.getElementById('set_ap_ssid').value,
@@ -315,7 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ETHERNET MENTÉS
+  // SAVE ETHERNET SETTINGS
   if(document.getElementById('saveEthBtn')) {
     document.getElementById('saveEthBtn').onclick = () => saveSettings('/api/settings/setEth', {
       eth_dhcp: Number(document.getElementById('set_eth_dhcp').value),
@@ -326,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-// MEASURING MENTÉS
+// SAVE MEASURING SETTINGS
   if(document.getElementById('saveMeasBtn')) {
     document.getElementById('saveMeasBtn').onclick = () => {
       const measDelayInput = document.getElementById('set_meas_delay');
@@ -354,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // MQTT MENTÉS
+  // SAVE MQTT SETTINGS
   if(document.getElementById('saveMqttBtn')) {
     document.getElementById('saveMqttBtn').onclick = () => saveSettings('/api/settings/setMqtt', {
       mqtt_server: document.getElementById('set_mqtt_ip').value,
@@ -508,10 +500,10 @@ document.getElementById('scanWifiBtn').onclick = async () => {
   list.innerHTML = '<div class="small" style="padding: 15px; text-align: center;">Searching for networks...</div>';
 
   try {
-    // 1. Start scanning
+    // Start scanning
     await fetch('/api/wifi/scan_start', { method: 'POST' });
 
-    // 2. Polling
+    // Polling
     const pollScan = setInterval(async () => {
       const res = await fetch('/api/wifi/scan_results');
       const data = await res.json();
@@ -610,7 +602,7 @@ function updateEthernetFieldsVisibility() {
   } else {
     ethStaticFields.style.display = 'flex';
     ethStaticFields.style.flexDirection = 'column';
-    ethStaticFields.style.gap = '5px'; // Egy kis térköz az elemek közé
+    ethStaticFields.style.gap = '5px';
   }
 }
 
