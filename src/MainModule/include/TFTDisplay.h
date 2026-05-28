@@ -49,7 +49,6 @@ public:
   void updateActiveMenuPeriodic();
   void updateDynamicValues();
   void drawMenuWindow();
-  void updateIECDetailMenus(int id);
   void updateSystemValues();
   void drawSavedSuccessScreen();
   void updateCursor();

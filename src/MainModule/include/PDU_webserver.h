@@ -16,7 +16,7 @@ public:
     PDU_webserver(AsyncWebServer *server, IECControl *iecControl, EnvironmentSensor *envSensor, networkLayerManager *networkLayer);
 
     void runServer(); 
-    void broadcastModules();
+    void broadcastModules();    // Brodcast via websocket the data of all modules
     void setUpdateInterval(uint32_t ms);
 
 private:

@@ -83,7 +83,7 @@ void TFTDisplay::drawDataViewScreen(const String &title, const std::vector<Strin
   }
 }
 
-// --- Setup menu (modular, dynamic) ---
+// --- Setup menu ---
 void TFTDisplay::setupMenu()
 {
   menus.clear();
@@ -134,10 +134,9 @@ void TFTDisplay::setupMenu()
   addMenuItem(aht10Id, MenuItem("Temperature:", MenuActionType::NONE));
   addMenuItem(aht10Id, MenuItem("Humidity:", MenuActionType::NONE));
 
-  // --- IEC Modules dynamic menu will be built with real IDs when setupDisplay is called
+  // IEC Module Menu
   int iecMenuId = addMenu("IEC Module Menu", selectIecId);
 
-  // create IEC module details menu (single template - will be updated dynamically)
   int iecInfoId = addMenu("IEC Info", iecMenuId);
   addMenuItem(iecMenuId, MenuItem("IEC Info", MenuActionType::NAVIGATE, iecInfoId));
   addMenuItem(iecInfoId, MenuItem("ID:", MenuActionType::NONE));
@@ -153,7 +152,7 @@ void TFTDisplay::setupMenu()
   addMenuItem(iecInfoId, MenuItem("P Factor meas.:", MenuActionType::NONE));
   addMenuItem(iecInfoId, MenuItem("Freq. meas.:", MenuActionType::NONE));
 
-
+  // IEC Status and settings
   int iecStatusId = addMenu("IEC Status", iecMenuId);
   addMenuItem(iecMenuId, MenuItem("IEC Status", MenuActionType::NAVIGATE, iecStatusId));
 
@@ -168,7 +167,6 @@ void TFTDisplay::setupMenu()
 
 void TFTDisplay::buildNetworkingMenu(int settingsMenuId)
 {
-  // Create networking subtree
   int wifiId = addMenu("WiFi Settings", settingsMenuId);
   int ethId = addMenu("Ethernet Settings", settingsMenuId);
   int mqttId = addMenu("MQTT Settings", settingsMenuId);
@@ -242,7 +240,7 @@ void TFTDisplay::buildNetworkingMenu(int settingsMenuId)
                                 drawDataViewScreen("Ethernet Config", {"IP: " + ip, "Gateway:" + gateway, "Subnet:" + subnet, "DNS:" + dns});
                               }));
 
-  // --- ÚJ: MQTT menüpontok ---
+  // MQTT OnOff
   addMenuItem(mqttId, MenuItem("SET", MenuActionType::CALLBACK, -1, [this, mqttId]()
                                { 
                                 bool currentState = mqttManager->isMQTTEnabled();

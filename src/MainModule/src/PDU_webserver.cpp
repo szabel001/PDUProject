@@ -57,7 +57,7 @@ void PDU_webserver::broadcastModules() {
         obj["voltage"] = iec->getRMSVoltageData(id);
         obj["current"] = iec->getRMSCurrentData(id);
         obj["power"] = iec->getApparentPowerData(id);
-        obj["energy"] = iec->getEnergyKWh(id);
+        obj["energy"] = iec->getEnergyKVAh(id);
         obj["unit_power"] = "VA";
         obj["unit_energy"] = "kWh";
         obj["version"] = iec->getIECVersion(id);
@@ -71,7 +71,7 @@ void PDU_webserver::broadcastModules() {
         
         JsonArray relays = obj["relays"].to<JsonArray>();
         
-        if(rcount > 8) rcount = 8; // Biztonsági limit
+        if(rcount > 8) rcount = 8;
         for(int r = 0; r < rcount; r++) {
             relays.add(iec->getIECRelayStatus(id)); 
         }
@@ -82,15 +82,21 @@ void PDU_webserver::broadcastModules() {
     ws.textAll(json);
 }
 
-// Webserver init
+// -----------------------------------------------------------
+// -------------------- API Endpoints ------------------------
+// -----------------------------------------------------------
+
 void PDU_webserver::runServer() {
-    
-    // ==========================================
-    // GET settings from client
-    // ==========================================
-    // ==========================================
-    // API: Get Environment Sensor Data
-    // ==========================================
+    // Endpoint to trigger IEC bus rescan
+    webServer->on("/api/scan", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        Serial.println("[Web] Manual IEC bus rescan initiated...");
+        
+        iec->collectIECModuleInfos();
+        
+        request->send(200, "application/json", "{\"ok\":true}");
+    });
+
+    // Endpoint to get environment sensor data
     webServer->on("/api/env", HTTP_GET, [this](AsyncWebServerRequest *request){
         JsonDocument doc; 
         String tempUnit = readStringFromNVS(NVSKeys::MEAS_TEMP, "C");
@@ -110,14 +116,8 @@ void PDU_webserver::runServer() {
         serializeJson(doc, json);
         request->send(200, "application/json", json);
     });
-    
-    webServer->on("/api/scan", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        Serial.println("[Web] Manual IEC bus rescan initiated...");
-        
-        iec->collectIECModuleInfos();
-        
-        request->send(200, "application/json", "{\"ok\":true}");
-    });
+
+    // Send the current settings to the client
     webServer->on("/api/settings/getData", HTTP_GET, [this](AsyncWebServerRequest *request){
         JsonDocument doc; 
         // --- WIFI STA ---
@@ -147,7 +147,6 @@ void PDU_webserver::runServer() {
         }
 
         // --- ETHERNET ---
-        // doc["eth_dhcp"] = ; TODO: DHCP támogatás hozzáadása
         doc["eth_ip"]   = readStringFromNVS(NVSKeys::ETHERNET_IP, "");
         doc["eth_gw"]   = readStringFromNVS(NVSKeys::ETHERNET_GATEWAY, "");
         doc["eth_sn"]   = readStringFromNVS(NVSKeys::ETHERNET_SUBNET, "");
@@ -169,9 +168,7 @@ void PDU_webserver::runServer() {
         request->send(200, "application/json", response);
     });
 
-    // ==========================================
-    // Save settings from client (POST)
-    // ==========================================
+    // Save settings from client
     webServer->on("/api/settings/setStaSettings", HTTP_POST, 
         [](AsyncWebServerRequest *request) {}, 
         NULL,
@@ -254,6 +251,7 @@ void PDU_webserver::runServer() {
         }
     );
 
+    // Save AP settings
     webServer->on("/api/settings/setAp", HTTP_POST, 
         [](AsyncWebServerRequest *request) {}, 
         NULL,
@@ -282,6 +280,7 @@ void PDU_webserver::runServer() {
         }
     );
 
+    // Save Ethernet settings
     webServer->on("/api/settings/setEth", HTTP_POST, 
         [](AsyncWebServerRequest *request) {}, 
         NULL,
@@ -299,7 +298,7 @@ void PDU_webserver::runServer() {
                     if (doc["eth_gw"].is<String>())  _networkLayer->setEthernet_Gateway(convertStringToIPAddress(doc["eth_gw"].as<String>()));
                     if (doc["eth_sn"].is<String>())  _networkLayer->setEthernet_Subnet(convertStringToIPAddress(doc["eth_sn"].as<String>()));
                     if (doc["eth_dns"].is<String>()) _networkLayer->setEthernet_DNS(convertStringToIPAddress(doc["eth_dns"].as<String>()));
-                    _networkLayer->configureEthernet(); // Az új beállítások érvényesítése
+                    _networkLayer->configureEthernet();
                     Serial.println("Ethernet beállítások mentve!");
                     request->send(200, "application/json", "{\"ok\":true}");
                 } else {
@@ -309,6 +308,7 @@ void PDU_webserver::runServer() {
         }
     );
 
+    // Save Measurement settings
     webServer->on("/api/settings/setMeas", HTTP_POST, 
         [](AsyncWebServerRequest *request) {}, 
         NULL,
@@ -360,7 +360,7 @@ void PDU_webserver::runServer() {
         }
     );
 
-    
+    // Save MQTT settings
     webServer->on("/api/settings/setMqtt", HTTP_POST, 
         [](AsyncWebServerRequest *request) {}, 
         NULL,
@@ -388,9 +388,7 @@ void PDU_webserver::runServer() {
         }
     );
 
-    // ==========================================
-    // API: Get data of all modules in JSON format
-    // ==========================================
+    // Get data of all modules in JSON format
     webServer->on("/api/data", HTTP_GET, [this](AsyncWebServerRequest *request){
         JsonDocument doc; 
         doc["total_current"] = iec->getSumIECCurrentData();
@@ -445,9 +443,7 @@ void PDU_webserver::runServer() {
         request->send(200,"application/json",json);
         });
 
-    // ==========================================
-    // API: Set relay state directly (1 = ON, 0 = OFF)
-    // ==========================================
+    // Set relay state
     webServer->on("/api/relay/set", HTTP_GET, [this](AsyncWebServerRequest *request){
         if(!request->hasParam("mod") || !request->hasParam("relay") || !request->hasParam("state")){
             request->send(400,"text/plain","Missing mod, relay or state parameter");
@@ -465,6 +461,7 @@ void PDU_webserver::runServer() {
         request->send(200,"text/plain","OK");
     });
 
+    // set all relays state
     webServer->on("/api/relay/setall", HTTP_GET, [this](AsyncWebServerRequest *request){
         if(!request->hasParam("state")){
             request->send(400,"text/plain","Missing state parameter");
@@ -476,9 +473,7 @@ void PDU_webserver::runServer() {
         request->send(200,"text/plain","OK");
     });
 
-    // ==========================================
-    // AP Status and Toggle API
-    // ==========================================
+    // AP Status
     webServer->on("/api/settings/ap_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
         bool apActive = _networkLayer->getWifiAP_Status();
@@ -493,6 +488,7 @@ void PDU_webserver::runServer() {
         request->send(200, "application/json", response);
     });
 
+    // AP Toggle
     webServer->on("/api/settings/ap_toggle", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, 
     [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
         JsonDocument doc;
@@ -502,9 +498,7 @@ void PDU_webserver::runServer() {
         request->send(200, "application/json", "{\"ok\":true}");
     });
 
-    // ==========================================
-    // MQTT Status and Toggle API
-    // ==========================================
+    // MQTT Status
     webServer->on("/api/settings/mqtt_status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
         doc["enabled"] = mqttManager->isMQTTEnabled();
@@ -514,6 +508,7 @@ void PDU_webserver::runServer() {
         request->send(200, "application/json", response);
     });
 
+    // MQTT Toggle
     webServer->on("/api/settings/mqtt_toggle", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, 
     [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
         JsonDocument doc;
@@ -523,6 +518,7 @@ void PDU_webserver::runServer() {
         request->send(200, "application/json", "{\"ok\":true}");
     });
 
+    // IEC Limit settings
     webServer->on("/api/module/settings", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             static String jsonBuffer = "";

@@ -107,7 +107,7 @@ void MqttHandler::handleMQTT() {
                     doc["RMSvoltage"] = _iec->getRMSVoltageData(id);
                     doc["RMScurrent"] = _iec->getRMSCurrentData(id);
                     doc["ApparentPower"] = _iec->getApparentPowerData(id);
-                    doc["Energy"] = _iec->getEnergyKWh(id);
+                    doc["Energy"] = _iec->getEnergyKVAh(id);
                     doc["relay_status"] = _iec->getRelayStatus(id);
 
                     char buffer[200];

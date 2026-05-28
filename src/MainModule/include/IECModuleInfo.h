@@ -34,7 +34,7 @@ enum currentLimit {             // collect which current limit is available on t
 
  struct Capabilities {          // collect which capabilities the IEC module has:
   currentLimit currLim;         // 16A or 32A
-  uint8_t relayCount;           // up to 8 relays
+  uint8_t relayCount;           // up to 8 relays if more availabe
   ledStates ledState;           // which type of LEDs are available on the IEC module
   uint8_t measureVoltageCount;  // number of voltage measurements (up to 8)
   uint8_t measureCurrentCount;  // number of current measurements (up to 8)
@@ -47,15 +47,12 @@ class IECModuleInfo {
   uint8_t version;
   Capabilities capabilities;
 
-  uint16_t inputRegisters[NUM_INPUT_REGISTERS] = {0};           // array to store the input registers of the IEC module
-  uint16_t holdingRegisters[NUM_HOLDING_REGISTERS] = {0};       // array to store the holding registers of the IEC module
-  bool coils[NUM_COILS] = {0};                                  // array to store the coils of the IEC module
-  bool discreteInputs[NUM_DISCRETEINPUTS] = {0};                // array to store the coils of the IEC module
+  uint16_t inputRegisters[NUM_INPUT_REGISTERS] = {0};
+  uint16_t holdingRegisters[NUM_HOLDING_REGISTERS] = {0};
+  bool coils[NUM_COILS] = {0};
+  bool discreteInputs[NUM_DISCRETEINPUTS] = {0};
 
-  float energyConsumptionWh = 0; // Wattórában tároljuk a nagyobb felbontásért
+  float energyConsumptionkVAh = 0;
   unsigned long lastEnergyUpdate = 0;
-
-
-  bool setIECCapabilities();    // set the capabilities of the IEC module
 };
 #endif

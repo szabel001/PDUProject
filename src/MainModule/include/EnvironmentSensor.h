@@ -17,7 +17,6 @@ class EnvironmentSensor {
     void setTemperatureScale(bool isFahrenheit);
     bool isFahrenheit();
     EnvironmentSensorData getData();
-    void setSamplingTime(uint16_t cycleTime);
 
   private:
     bool _temSensorInitialized = false;

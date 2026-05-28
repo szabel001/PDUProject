@@ -33,7 +33,3 @@ EnvironmentSensorData EnvironmentSensor::getData() {
   }
   return data;
 }
-
-void EnvironmentSensor::setSamplingTime(uint16_t data) {
-  return;
-}

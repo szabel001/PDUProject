@@ -17,7 +17,7 @@ public:
     void setupMQTT();
     void handleMQTT();
     
-    String getMQTTStatusString();
+    String getMQTTStatusString(); // for web interface display
     bool isMQTTEnabled();
 
 private:

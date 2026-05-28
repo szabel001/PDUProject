@@ -39,20 +39,18 @@ struct MeasurementData {
 class IECControl {
   public:
     IECControl(HardwareSerial& RS485Serial);      // Constructor to initialize the Modbus master with the given serial port
-    void IECSetup();
-    void IECReadLoop();
+    void IECReadLoop();   // Main loop to read meas data from IEC
 
     bool setRelayStatus(uint8_t id, bool status); // Set the relay status for the given slave ID
-    bool setIECAVGNum(uint8_t id, float value);
     bool setCustCurrWarningLimit(uint8_t id, float value);
     bool setCustCurrErrorLimit(uint8_t id, float value);
     void setOverCurrentTreshold(uint8_t id, float level);
-    uint16_t getOverCurrentTreshold();
 
     void setAllIecRelaysOff(); // Set all IEC module relays off
     void setAllIecRelaysOn();  // Set all IEC module relays on
     void setIECSwitchingDelay(uint16_t delay);
     void setAllIecRelayStatus(bool status);
+    void setpowerDataUpdateCycleTime(uint16_t cycleTime);  // Set the global cycle time for the power data acquisition
 
     uint16_t getIECSwitchingDelay();
     bool getRelayStatus(uint8_t id); // Get the relay status for the given slave ID
@@ -64,9 +62,10 @@ class IECControl {
     float getApparentPowerData(uint8_t id);       // [VA] Get the apparent power data from the IECModuleInfo's local registers
     float getFrequencyData(uint8_t id);     // [Hz] Get the frequency data from the IECModuleInfo's local register
     float getPowerFactorData(uint8_t id);   // [1] Get the power factor data from the IECModuleInfo's local register
+    uint16_t getOverCurrentTreshold();
 
-    MeasurementData getMeasurementData(uint8_t id);       // Get the relay status from all slaves
-    configData getConfigData(uint8_t id);
+    MeasurementData getMeasurementData(uint8_t id);       // NOT USED
+    configData getConfigData(uint8_t id);                 // NOT USED
 
     uint16_t getIECID(uint8_t id); // Get the Modbus ID from the given slave ID
     uint16_t getIECVersion(uint8_t id); // Get the version from the given slave ID
@@ -86,7 +85,6 @@ class IECControl {
     uint16_t getPowerDataUpdateCycleTime();
 
     float getCustCurrWarningLimit(uint8_t id); // Get the warning level for the given slave ID
-    float getIECAVGNum(uint8_t id);
     float getCustCurrErrorLimit(uint8_t id); // Get the error level for the given slave ID
 
     std::vector<uint8_t> collectIECModuleInfos();
@@ -96,12 +94,9 @@ class IECControl {
     float getSumIECEnergyData();
 
     float getSumIECCurrentData();       // [A] Get the sum of current data from all IECModuleInfo's local register
-    float getAvgIECVoltageData();       // [V] Get the sum of voltage data from all IECModuleInfo's local register
     float getSumIECPowerData();         // [W] Get the sum of power
     float getAvgIECFrequencyData();     // [Hz] Get the average of frequency data from all IECModuleInfo's local register
-    float getEnergyKWh(uint8_t id);
-
-    void setpowerDataUpdateCycleTime(uint16_t cycleTime);  // Set the global cycle time for the power data acquisition
+    float getEnergyKVAh(uint8_t id);
 
     std::vector<uint8_t> getFoundIECIDs(); // Vector to store discovered slave IDs
     std::vector<uint8_t> discoverIECs();
@@ -109,19 +104,26 @@ class IECControl {
     void processRelaySequence();
 
 private:
+    ModbusRTUMaster _mbMaster;
+    std::map<uint8_t, IECModuleInfo> _iecModules;
+    std::vector<uint8_t> _foundIECIDs; // Vector to store discovered slave IDs
+    
+    uint16_t _IECSwitchingDelay = 0;
+
     bool _relaySequenceActive = false;
     bool _relaySequenceTargetState = false;
     size_t _relaySequenceIndex = 0;
     unsigned long _relaySequenceLastTime = 0;
     uint32_t _relaySequenceDelayMs = 0;
     unsigned long _lastRetryTime = 0;
+    unsigned long _startMillis_powerRead;
+
 
     bool _isIECCommunicate(uint8_t id);
     uint16_t _getIntDataFromInputRegister(uint8_t id, uint16_t startOfData);
     uint16_t _getIntDataFromHoldingRegister(uint8_t id, uint16_t startOfData);
     bool _updateMeasurement();
     bool _updateMeasurement(uint8_t id);
-
 
     float _getFloatDataFromInputRegister(uint8_t id, uint16_t startOfData);
     float _getFloatDataFromHoldingRegister(uint8_t id, uint16_t startOfData);
@@ -132,7 +134,7 @@ private:
 
     void _readIECCoil(uint8_t id, uint16_t startOfData);
 
-    void _readIECCapabilities(uint8_t id);        //Read all capabilities in one function
+    void _readIECCapabilities(uint8_t id);
     void _readID(uint8_t id);
     void _readIECVersion(uint8_t id);
     void _readIECRelayCount(uint8_t id);
@@ -146,12 +148,12 @@ private:
     void _readIEC_IS_POWER_FACTOR_MEASURED(uint8_t id);
     void _readIEC_IS_AC_FREQUENCY_MEASURED(uint8_t id);
     void _readOCTreshold(uint8_t id);
-    void _readIECStatus(uint8_t id); // IEC's status is Error/Off/Standby/Active TODO implement
+    void _readIECStatus(uint8_t id);
 
     void _readCustCurrWarningLimit(uint8_t id);
     void _readCustCurrErrorLimit(uint8_t id);
     void _readIECAVGNum(uint8_t id);
-    void _readRelayStatus(uint8_t id);            //Read the relay status from the given slave ID over the RS485 bus
+    void _readRelayStatus(uint8_t id);
     void _read_RMS_VOLTAGE(uint8_t id);
     void _read_RMS_CURRENT(uint8_t id);
     void _read_ACTIVE_POWER(uint8_t id);
@@ -164,13 +166,5 @@ private:
     void _writeCustCurrErrorLimit(uint8_t id, float value);
     void _writeOCTreshold(uint8_t id, float value);
     void _writeIECAVGNum(uint8_t id, float value);
-
-    ModbusRTUMaster _mbMaster;
-    String _debugString = "";
-    std::map<uint8_t, IECModuleInfo> _iecModules;
-    std::vector<uint8_t> _foundIECIDs; // Vector to store discovered slave IDs
-    unsigned long _startMillis_powerRead;
-
-    uint16_t _IECSwitchingDelay = 0;
 };
 #endif

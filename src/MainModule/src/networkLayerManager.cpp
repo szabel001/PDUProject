@@ -1,9 +1,5 @@
 #include "networkLayerManager.h"
 
-#if !( defined(ESP32) )
-  #error This code is designed for (ESP32 + W5500) to run on ESP32 platform! Please check your Tools->Board setting.
-#endif
-
 String convertIPAddressToString(IPAddress ip) {
   return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]);
 }
@@ -59,7 +55,7 @@ void networkLayerManager::initInternetProtocol() {
   #endif
   WiFiAPStatus = false;
   WiFiSTAStatus = false;
-  WiFi.mode(WIFI_OFF); // Disable Wi-Fi to start with
+  WiFi.mode(WIFI_OFF); // Disable Wi-Fi by default
 }
 
 ///----------------------------------------------------------------------------------------------
@@ -253,7 +249,7 @@ bool networkLayerManager::setWifiSTA_Status(bool status) {
     WiFi.mode(WIFI_STA);
     WiFi.begin(_WifiSTA_SSID, _WifiSTA_Password);
     WiFiSTAStatus = false;
-    Serial.println("WiFi csatlakozás elindítva a háttérben...");
+    Serial.println("WiFi connecting in background...");
     _startConnecting = true; 
     return true;
   } else {
@@ -314,8 +310,6 @@ void networkLayerManager::configureWifiSTA_DNS(IPAddress dnsIP) {
 ///------------------------------- Ethernet configuration --------------------------------------
 ///----------------------------------------------------------------------------------------------
 
-
-//TODO this need to be modified to save to local variables too correctly!
 String networkLayerManager::getEthernetIP() {
   _EthernetIP = ETH.localIP();
   return _EthernetIP.toString();

@@ -3,6 +3,10 @@
 
 #include <Preferences.h>
 
+//-------------------------------------------------------------------------------------------------
+// Global variables saved in NVS (Non-Volatile Storage) for persistent configuration across reboots
+//-------------------------------------------------------------------------------------------------
+
 namespace NVSKeys {
   constexpr const char* WIFI_AP_ENA = "wifi_ap_ena";
   constexpr const char* WIFI_AP_SSID = "ssid_ap";
