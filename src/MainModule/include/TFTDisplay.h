@@ -34,8 +34,6 @@ struct Menu {
   const char* title;
   std::vector<MenuItem> items;
   int parentId;                // -1 for root
-
-  Menu(int _id = -1, const char* t = "", int p = -1) : id(_id), title(t), parentId(p) {}
 };
 
 
